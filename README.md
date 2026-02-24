@@ -89,16 +89,4 @@ nmcli connection modify "WIFI_NAME" connection.autoconnect yes
 # 4. 설정 적용 (재연결)
 nmcli connection up "WIFI_NAME"
 ```
-### 2. C++ 결과 데이터의 외부 반출 (Data Logging)
-**문제 상황:**
-기존 예제 코드는 결과를 터미널(`printf`)에만 출력하여, 외부 Python 스크립트가 데이터를 활용할 수 없는 데이터 고립(Data Silo) 문제 발생.
 
-**해결:**
-C++ 소스코드(`main.cc`)를 수정하여 `fprintf`를 이용해 객체 인식 결과(좌표, 라벨, 확률)를 `detections.txt` 파일로 실시간 저장하는 로직 구현. 이를 통해 **C++(NPU) → 텍스트 파일 → Python(시각화)** 파이프라인 완성.
-
-### 3. 쉘 스크립트 작성 시 문법 오류 (EOF)
-**문제 상황:**
-터미널에서 `cat << 'EOF'`로 `run.sh`를 생성하는 과정에서, 파일 내용 끝에 불필요한 텍스트가 들어가거나 실행되지 않는 오류 발생.
-
-**해결:**
-Bash의 Heredoc 문법 사용 시 종료 구분자(`EOF`) 처리 방식을 이해하고, 스크립트 파일 내부에는 불필요한 구문이 포함되지 않도록 수정하여 정상 실행 확인.

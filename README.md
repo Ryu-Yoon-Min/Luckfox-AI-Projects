@@ -4,7 +4,7 @@
 이 레포지토리는 Rockchip RV1106 NPU (Luckfox Pico Ultra)를 활용한 임베디드 AI 비전 프로젝트들을 단계별로 기록한 통합 저장소입니다.
 
 ## 📂 Projects
-[01] RV1106 추론 및 로컬 Mac 시각화 자동화 (/01_image_inference_mac)
+### 1. RV1106 추론 및 로컬 Mac 시각화 자동화 (/01_image_inference_mac)
 Description: 정지 이미지(bus.jpg)에 대한 YOLOv5 NPU 추론을 수행하고, 결과를 로컬 Mac으로 전송하여 시각화합니다.
 
 * **NPU Inference (보드):** C++ 기반 RKNN API를 이용해 YOLOv5 모델 추론 후 좌표 추출 (`detections.txt`)

@@ -50,4 +50,4 @@ try:
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 except Exception as e:
-    print(f"ℹ️ Info: Could not display window (Reason: {e})")
+    print(f"Info: Could not display window (Reason: {e})")

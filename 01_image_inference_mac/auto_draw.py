@@ -5,16 +5,16 @@ print("1. Python script started")
 
 # File existence check
 if not os.path.exists('bus.jpg'):
-    print("Error: 'bus.jpg' not found.")
+    print("❌ Error: 'bus.jpg' not found.")
     exit()
 if not os.path.exists('detections.txt'):
-    print("Error: 'detections.txt' not found.")
+    print("❌ Error: 'detections.txt' not found.")
     exit()
 
 print("2. Loading image...")
 img = cv2.imread('bus.jpg')
 if img is None:
-    print("Error: Could not read the image.")
+    print("❌ Error: Could not read the image.")
     exit()
 
 print("3. Reading detection coordinates...")
@@ -39,9 +39,9 @@ print("5. Saving the result...")
 cv2.imwrite('result.jpg', img)
 
 if os.path.exists('result.jpg'):
-    print("Success: 'result.jpg' has been created!")
+    print("✅ Success: 'result.jpg' has been created!")
 else:
-    print("Error: Failed to save the file.")
+    print("❌ Error: Failed to save the file.")
 
 # Attempting to display the window (Mac/Desktop environment)
 try:

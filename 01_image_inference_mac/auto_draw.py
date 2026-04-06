@@ -39,7 +39,7 @@ print("5. Saving the result...")
 cv2.imwrite('result.jpg', img)
 
 if os.path.exists('result.jpg'):
-    print("✅ Success: 'result.jpg' has been created!")
+    print("Success: 'result.jpg' has been created!")
 else:
     print("Error: Failed to save the file.")
 

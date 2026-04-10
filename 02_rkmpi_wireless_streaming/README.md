@@ -16,10 +16,13 @@
 ## 🚀 Step 1. Infrastructure Setup: 네트워크 독립성 확보
 RK-MPI 스트리밍 서버를 디버그 케이블 없이 무선으로 원활하게 접근하기 위해, 시스템의 DHCP 강제 할당 메커니즘을 제어하고 고정 IP 인프라를 구축했습니다.
 
-* **Target IP:** 원하는 IP 설정.
-* **Implementation:** Booting 시 자동으로 wlan0 Interface(L1)를 동작시키고, Wi-Fi 연결(RUNNING Flag, L2) 후 Static IP(L3)를 부여하는 커스텀 데몬 스크립트 작성.
-* **상세 트러블슈팅 리포트:** [Network Connecting Problem](./troubleshooting.md)
+* **Implementation:** Booting 시 자동으로 wlan0 Interface(L1)를 동작시키고, Wi-Fi 연결(RUNNING Flag, L2) 후 Static IP(L3)를 부여하는 커스텀 데몬 스크립트`02_rkmpi_wireless_streaming/scripts/S99staticip` 작성. 해당 script를 보드의 `/etc/init.d/` 에 삽입.
 
+* 우선 `/etc/wpa_supplicant.conf`에 AP(Access Point)의 SSID와 PWD를 입력해줍니다.
+* **Target IP:** `02_rkmpi_wireless_streaming/scripts/S99staticip`에 원하는 IP 설정.
+* 보드 reboot 후 ifconfig wlan0를 통해 IP 할당 확인.
+
+* **상세 트러블슈팅 리포트:** [Network Connecting Problem](./troubleshooting.md)
 ---
 
 ## 🚀 Step 2. RK-MPI Streaming Implementation (WIP)

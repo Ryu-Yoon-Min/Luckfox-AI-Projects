@@ -17,7 +17,7 @@
 RK-MPI 스트리밍 서버를 디버그 케이블 없이 무선으로 원활하게 접근하기 위해, 시스템의 DHCP 강제 할당 메커니즘을 제어하고 고정 IP 인프라를 구축했습니다.
 
 * **Target IP:** 원하는 IP 설정.
-* **Implementation:** Wi-Fi 연결(RUNNING Flag, L2) 즉시 고정 IP를 주입하고, 시스템의 자동 복구 기능(DHCP Respawn)을 바이너리 레벨에서 무력화하는 커스텀 데몬 스크립트 작성.
+* **Implementation:** Booting 시 자동으로 wlan0 Interface(L1)를 동작시키고, Wi-Fi 연결(RUNNING Flag, L2) 후 Static IP(L3)를 부여하는 커스텀 데몬 스크립트 작성.
 * **상세 트러블슈팅 리포트:** [Network Connecting Problem](./troubleshooting.md)
 
 ---

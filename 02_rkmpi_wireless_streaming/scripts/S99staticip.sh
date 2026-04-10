@@ -13,18 +13,27 @@ check_wifi_ready() {
 
 static_ip()
 {
+ killall -9 wpa_supplicant 2>/dev/null
+ killall -9 udhcpc 2>/dev/null
+ sleep 2
+
+ # <L1> wake up wlan card
+ ifconfig wlan0 up
+ sleep 2
+
+ # <L2> Connect to AP
+ wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
+ sleep 2
+
  while [ $TRIES -lt $MAX_TRIES ]; do
 	if check_wifi_ready; then
 		echo "Wi-Fi associated! Setting Static IP now..."
-
-		killall -9 udhcpc 2>/dev/null
-
-		ifconfig wlan0 192.168.1.100 netmask 255.255.255.0
-		route add default gw 192.168.1.1
+                
+                # <L3> Allocated static IP
+		ifconfig wlan0 172.30.1.100 netmask 255.255.255.0
+		route add default gw 172.30.1.254
 		echo "nameserver 8.8.8.8" > /etc/resolv.conf
-		ifconfig wlan0 up
-
-		echo "Static IP set"
+		
 		break
 	else
 		echo "Waiting for Wi-Fi association..."
@@ -38,7 +47,9 @@ case $1 in
 	start)
 		static_ip &
 		;;
-	stop)
+	stop)   
+                killall wpa_supplicant 2>/dev/null
+                ifconfig wlan0 down
 		;;
 	*)
 		exit 1

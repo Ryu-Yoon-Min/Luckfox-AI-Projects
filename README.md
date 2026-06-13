@@ -3,6 +3,14 @@
 
 이 레포지토리는 Rockchip RV1106 NPU (Luckfox Pico Ultra)를 활용한 임베디드 AI 비전 프로젝트들을 단계별로 기록한 통합 저장소입니다.
 
+## Project Status
+
+| Project | Status | Evidence |
+| :--- | :--- | :--- |
+| `01_image_inference_mac` | Completed | `detections.txt`, `auto_draw.py`, `run.sh`, `result.jpg` |
+| `02_rkmpi_wireless_streaming` - Static IP setup | Completed | `scripts/S99staticip.sh`, `troubleshooting.md` |
+| `02_rkmpi_wireless_streaming` - RK-MPI/RTSP streaming | In Progress | README에 구현 계획 정리 |
+
 ## 📂 Projects
 
 [01] RV1106 추론 및 로컬 Mac 시각화 자동화 (/01_image_inference_mac)

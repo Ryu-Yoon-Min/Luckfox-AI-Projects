@@ -1,8 +1,8 @@
 # 01. RV1106 추론 결과 및 로컬 Mac 시각화 자동화
 
-Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 객체 탐지 결과를 로컬 Mac으로 가져와 OpenCV로 시각화하는 host-side pipeline입니다.
+Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 YOLOv5/RKNN 객체 탐지 결과를 로컬 Mac으로 가져와 OpenCV로 시각화하는 host-side pipeline입니다.
 
-이 프로젝트의 목적은 Edge device에서 생성된 추론 결과를 단순 콘솔 출력이나 일회성 화면 확인으로 끝내지 않고, 재사용 가능한 데이터 파일과 후처리 코드로 분리하는 것입니다. 이를 통해 headless 환경의 보드에서도 로컬 개발 환경에서 탐지 결과를 빠르게 확인하고 기록할 수 있습니다.
+이 프로젝트의 핵심은 Edge device에서 발생한 추론 결과를 콘솔 출력으로만 확인하지 않고, 재사용 가능한 데이터 파일(`detections.txt`)로 분리한 뒤, 로컬 개발 환경에서 다시 파싱하고 시각화하는 구조를 만든 것입니다.
 
 ## Project Status
 
@@ -10,7 +10,7 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 객체 탐지 
 | :--- | :--- | :--- |
 | Detection result file | Completed | `detections.txt` |
 | Host-side visualization | Completed | `auto_draw.py` |
-| Result transfer script | Completed | `run.sh` |
+| Edge-to-host transfer script | Completed | `run.sh` |
 | Rendered output image | Completed | `result.jpg` |
 | Target-side C++ inference source | Not included in this folder | 보드 측 SDK 수정 내용은 별도 보강 필요 |
 
@@ -33,7 +33,7 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 객체 탐지 
 RV1106 board
   └── YOLOv5 / RKNN inference
         └── detections.txt 생성
-              └── scp로 Mac에 전송
+              └── SCP로 Mac에 전송
                     └── auto_draw.py 실행
                           └── result.jpg 생성
 ```
@@ -47,6 +47,7 @@ RV1106 board
 | `auto_draw.py` | 탐지 결과를 읽어 bounding box를 그리는 Python script |
 | `run.sh` | 보드에서 `detections.txt`를 가져오고 시각화 script를 실행하는 자동화 script |
 | `result.jpg` | bounding box와 label이 렌더링된 최종 이미지 |
+| `coco_80_labels_list.txt` | COCO class label reference |
 
 ## Detection Result Format
 
@@ -75,6 +76,76 @@ person 79 354 122 516 0.349309
 | `x2`, `y2` | bounding box의 right-bottom 좌표 |
 | `confidence` | 모델의 confidence score |
 
+## Key Implementation Details
+
+### 1. Custom Data Serialization Layer
+
+기존 RV1106/RKNN 기반 YOLOv5 demo는 추론 결과를 주로 콘솔(`stdout`)에 출력하는 방식으로 확인합니다. 이 방식은 사람이 터미널에서 결과를 읽기에는 충분하지만, 외부 프로그램이 결과를 다시 사용하거나 시각화하기에는 적합하지 않습니다.
+
+이 프로젝트에서는 보드에서 생성된 객체 탐지 결과를 `detections.txt`라는 line-based text file로 저장하고, host-side Python script가 해당 파일을 다시 읽어 시각화하도록 구성했습니다.
+
+```text
+[label] [x1] [y1] [x2] [y2] [confidence]
+```
+
+이 구조를 사용하면 추론 결과가 콘솔에 일회성으로 출력되고 사라지는 것이 아니라, 다른 프로그램이 재사용할 수 있는 중간 산출물로 남습니다.
+
+| Type | Output Method | Consequence |
+| :--- | :--- | :--- |
+| Before | Console output | 사람이 읽을 수는 있지만 외부 프로그램과 연동하기 어려움 |
+| After | `detections.txt` file output | Python, OpenCV 등 host-side tool에서 재사용 가능 |
+
+> Note: 현재 이 폴더에는 target board에서 실행한 C++ inference source가 포함되어 있지 않습니다. 따라서 이 README에서는 공개 레포에서 확인 가능한 `detections.txt`, `run.sh`, `auto_draw.py`, `result.jpg` 중심으로 설명합니다.
+
+### 2. Edge-to-Host Transfer Pipeline
+
+`run.sh`는 보드에서 생성된 `detections.txt`를 로컬 Mac으로 가져오고, 전송이 끝나면 곧바로 Python 시각화 script를 실행합니다.
+
+```bash
+scp pico@<BOARD_IP>:/home/pico/yolo_test/detections.txt ./
+python3 auto_draw.py
+```
+
+이 흐름을 통해 보드에서 추론을 수행한 뒤, 로컬 개발 환경에서 결과를 빠르게 확인할 수 있습니다.
+
+실제 `run.sh`의 역할은 다음과 같습니다.
+
+1. 보드의 추론 결과 파일 위치에 접근
+2. SCP로 `detections.txt`를 로컬 폴더에 복사
+3. 복사 완료 후 `auto_draw.py` 실행
+4. `result.jpg` 생성
+
+### 3. Host-Side Parsing Pipeline
+
+`auto_draw.py`는 `detections.txt`를 한 줄씩 읽고, 각 줄을 공백 기준으로 분리하여 객체 class, bounding box 좌표, confidence score를 복원합니다.
+
+```python
+label, x1, y1, x2, y2, score = data[0], int(data[1]), int(data[2]), int(data[3]), int(data[4]), float(data[5])
+```
+
+이 과정에서 텍스트 파일에 저장된 추론 결과가 Python 내부의 구조화된 값으로 변환됩니다.
+
+### 4. OpenCV Bounding Box Rendering
+
+파싱된 좌표를 기반으로 OpenCV를 사용해 원본 이미지 위에 bounding box와 label을 렌더링합니다.
+
+```python
+cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+cv2.putText(img, f"{label} {score:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+```
+
+렌더링이 끝나면 결과 이미지를 `result.jpg`로 저장합니다.
+
+```python
+cv2.imwrite('result.jpg', img)
+```
+
+### 5. Headless Development Workflow
+
+Luckfox 보드는 모니터 없이 headless 환경에서 운용되는 경우가 많습니다. 이 프로젝트는 보드에 직접 디스플레이를 연결하지 않아도, 추론 결과를 파일로 가져와 로컬 환경에서 확인할 수 있도록 구성했습니다.
+
+따라서 이 작업은 단순한 이미지 시각화가 아니라, Edge device와 host PC 사이의 debugging workflow를 만든 작업으로 볼 수 있습니다.
+
 ## How to Run
 
 ### 1. 보드에서 결과 파일 가져오기
@@ -101,32 +172,87 @@ python3 auto_draw.py
 
 실행 후 `result.jpg`가 생성됩니다.
 
-## Implementation Details
+## Troubleshooting & Issues
 
-### 1. Result Parsing
+### 1. Problem: 추론 결과가 콘솔 출력에만 머무르는 문제
 
-`auto_draw.py`는 `detections.txt`를 line-by-line으로 읽고, 각 줄을 공백 기준으로 분리합니다.
+초기 YOLOv5/RKNN demo 흐름에서는 객체 탐지 결과를 터미널에 출력하는 방식으로 확인할 수 있습니다. 하지만 이 방식은 외부 프로그램이 결과를 재사용하기 어렵습니다.
 
-```python
-label, x1, y1, x2, y2, score = data[0], int(data[1]), int(data[2]), int(data[3]), int(data[4]), float(data[5])
-```
+**Issue**
 
-이를 통해 class label, bounding box 좌표, confidence score를 구조화된 값으로 복원합니다.
+- 결과가 콘솔에 출력되고 사라짐
+- Python/OpenCV 후처리 코드가 직접 사용할 수 있는 중간 산출물이 없음
+- headless 환경에서 결과 검토가 불편함
 
-### 2. OpenCV Rendering
+**Solution**
 
-파싱한 좌표를 기반으로 원본 이미지 위에 bounding box와 label을 그립니다.
+추론 결과를 line-based text file인 `detections.txt`로 저장하고, host-side script가 해당 파일을 읽어 시각화하도록 구조를 분리했습니다.
 
-```python
-cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-cv2.putText(img, f"{label} {score:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-```
+**Result**
 
-렌더링이 끝나면 결과 이미지를 `result.jpg`로 저장합니다.
+- 탐지 결과가 재사용 가능한 파일 형태로 남음
+- local Mac에서 결과를 다시 파싱하고 렌더링 가능
+- 시각화 결과를 `result.jpg`로 저장 가능
 
-```python
-cv2.imwrite('result.jpg', img)
-```
+### 2. Problem: Headless 보드에서 결과 확인이 불편한 문제
+
+Luckfox 보드는 모니터를 직접 연결하지 않고 사용하는 경우가 많습니다. 이때 추론 결과를 보드 내부에서만 확인하면 개발과 디버깅이 불편합니다.
+
+**Issue**
+
+- 보드에 직접 display를 연결하지 않으면 결과 확인이 제한됨
+- 매번 터미널 로그만 보고 탐지 결과를 판단해야 함
+- bounding box가 이미지 위에서 어떻게 나타나는지 즉시 확인하기 어려움
+
+**Solution**
+
+보드에서 생성한 `detections.txt`를 SCP로 Mac에 가져오고, OpenCV로 원본 이미지 위에 bounding box를 다시 그리도록 했습니다.
+
+**Result**
+
+- 보드는 inference와 result generation에 집중
+- 로컬 Mac은 visualization과 debugging에 집중
+- Edge device와 host PC 사이의 역할이 분리됨
+
+### 3. Problem: 보드 IP 변경으로 SCP 연결이 불안정한 문제
+
+`run.sh`는 SCP를 사용해 보드에서 `detections.txt`를 가져옵니다. 이때 보드의 IP가 재부팅마다 바뀌면 자동화 script가 안정적으로 동작하기 어렵습니다.
+
+**Issue**
+
+- DHCP 환경에서 보드 IP가 변경될 수 있음
+- `run.sh` 내부의 접속 주소를 매번 수정해야 함
+- SSH/SCP 연결이 불안정해질 수 있음
+
+**Solution**
+
+이 문제는 `02_rkmpi_wireless_streaming` 프로젝트에서 static IP infrastructure로 분리해 해결합니다. 해당 프로젝트에서는 `wlan0`의 연결 상태를 확인한 뒤 static IP를 주입하는 init script를 작성했습니다.
+
+관련 문서:
+
+- [`02_rkmpi_wireless_streaming`](../02_rkmpi_wireless_streaming)
+- [`troubleshooting.md`](../02_rkmpi_wireless_streaming/troubleshooting.md)
+
+**Result**
+
+01 프로젝트의 host-side automation은 보드 IP가 안정적으로 유지될 때 더 잘 동작합니다. 따라서 01의 `run.sh`와 02의 static IP infrastructure는 서로 연결되는 작업입니다.
+
+### 4. Current Limitation: 보드 측 C++ 코드가 이 폴더에 포함되어 있지 않음
+
+현재 이 폴더에는 host-side visualization pipeline의 산출물과 코드가 중심으로 포함되어 있습니다. 반면 보드에서 RKNN inference를 수행하고 `detections.txt`를 생성하는 C++ source는 아직 이 폴더에 포함되어 있지 않습니다.
+
+**Impact**
+
+- 보드 측 전체 inference flow를 GitHub만으로 완전히 재현하기 어려움
+- `detections.txt`가 어떤 target-side 코드에서 생성됐는지 추적하기 어려움
+- 포트폴리오 평가자가 target-side 구현 근거를 확인하기 어려움
+
+**Next Action**
+
+- 보드 측 inference source 또는 patch diff 추가
+- RKNN demo 수정 지점 문서화
+- `detections.txt` 생성 위치와 실행 명령 기록
+- PyTorch -> ONNX -> RKNN 변환 과정 문서화
 
 ## Result
 
@@ -147,10 +273,13 @@ cv2.imwrite('result.jpg', img)
 - 텍스트 기반 detection result parsing
 - OpenCV를 활용한 bounding box visualization
 - Headless embedded board 개발을 위한 host-side debugging workflow 구성
+- 이후 RK-MPI streaming pipeline과 연결될 수 있는 host-edge workflow 설계
 
 ## Current Limitations
 
 현재 이 폴더에는 target board에서 실행한 C++ 추론 코드 원본이나 RKNN 변환 과정이 포함되어 있지 않습니다. 따라서 이 README에서는 보드 측 전체 inference implementation을 완성된 형태로 설명하기보다, 공개 레포에서 확인 가능한 host-side visualization pipeline을 중심으로 설명합니다.
+
+또한 현재 예제는 단일 이미지(`bus.jpg`)와 단일 결과 파일(`detections.txt`)을 기준으로 동작합니다. 여러 이미지나 영상 스트림에 대한 batch processing은 아직 포함되어 있지 않습니다.
 
 ## Next Improvements
 
@@ -161,3 +290,4 @@ cv2.imwrite('result.jpg', img)
 - 여러 입력 이미지에 대한 batch visualization 지원
 - confidence threshold 조정 옵션 추가
 - 결과 파일 format을 JSON 또는 CSV로 확장 검토
+- 02 프로젝트의 RK-MPI streaming pipeline과 연결

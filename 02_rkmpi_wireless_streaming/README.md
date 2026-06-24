@@ -179,16 +179,16 @@ cat /etc/resolv.conf
 
 ### 5. Client에서 RTSP 수신
 
-VLC 또는 ffplay로 RTSP stream을 확인합니다.
+VLC로 RTSP stream을 확인합니다.
 
 ```bash
-ffplay rtsp://<BOARD_STATIC_IP>:<PORT>/<STREAM_PATH>
+rtsp://<BOARD_STATIC_IP>:<PORT>/<STREAM_PATH>
 ```
 
 예시:
 
 ```bash
-ffplay rtsp://172.30.1.100:8554/live/0
+rtsp://172.30.1.100:8554/live/0
 ```
 
 ## Demo
@@ -213,9 +213,8 @@ Demo video: <ADD_DEMO_VIDEO_LINK>
 
 > RTSP client 화면 캡처 이미지를 추가하세요.
 
-```md
-![rtsp-demo](./assets/rtsp_demo.jpg)
-```
+<img width="3514" height="1958" alt="vlc_addr" src="https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d" />
+
 
 추천 파일 위치:
 

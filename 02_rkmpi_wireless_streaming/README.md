@@ -75,7 +75,7 @@ RK-MPI의 VI(Video Input) pipeline을 사용해 CSI camera module에서 frame을
 
 - host PC에 의존하지 않고 보드 단독으로 탐지 결과를 시각화할 수 있음
 - RTSP stream을 수신하는 쪽에서는 이미 BBOX가 포함된 영상을 바로 확인할 수 있음
-- Edge device가 inference와 visualization을 모두 담당하는 구조로 확장 가능
+- Edge device가 inference와 visualization을 모두 담당하는 구조로 보안과 실시간 처리에 유리함
 
 ### 3. On-Device Bounding Box Overlay
 
@@ -98,9 +98,7 @@ Bounding box가 overlay된 frame은 video encoding pipeline을 거쳐 RTSP strea
 
 예시:
 
-    rtsp://172.30.1.100:8554/live/0
-
-> 실제 RTSP URL은 구현 환경에 맞게 수정해야 합니다.
+    rtsp://172.30.1.100:554/live/0
 
 ### 5. Wireless Static IP Infrastructure
 
@@ -161,7 +159,7 @@ VLC로 RTSP stream을 확인합니다.
 
 예시:
 
-    rtsp://172.30.1.100:8554/live/0
+    rtsp://172.30.1.100:554/live/0
 
 ## Demo
 

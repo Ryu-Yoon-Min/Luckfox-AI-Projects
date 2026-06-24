@@ -18,29 +18,25 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 카메라 입력을 받�
 
 ## Repository Structure
 
-```text
-02_rkmpi_wireless_streaming/
-├── README.md
-├── troubleshooting.md
-└── scripts/
-    └── S99staticip.sh
-```
+    02_rkmpi_wireless_streaming/
+    ├── README.md
+    ├── troubleshooting.md
+    └── scripts/
+        └── S99staticip.sh
 
 > Note: 현재 README는 시스템 구조와 네트워크 인프라, 트러블슈팅 중심으로 정리합니다. RK-MPI streaming source code, 실행 로그, demo video, metric 결과는 추가 evidence로 보강할 예정입니다.
 
 ## System Overview
 
-```text
-CSI Camera
-  └── RK-MPI VI
-        └── Frame Capture
-              └── RV1106 NPU Inference
-                    └── Bounding Box Overlay on Board
-                          └── RK-MPI VENC / Stream Encoding
-                                └── RTSP Server
-                                      └── Wireless Client
-                                            └── RTSP Viewer
-```
+    CSI Camera
+      └── RK-MPI VI
+            └── Frame Capture
+                  └── RV1106 NPU Inference
+                        └── Bounding Box Overlay on Board
+                              └── RK-MPI VENC / Stream Encoding
+                                    └── RTSP Server
+                                          └── Wireless Client
+                                                └── RTSP Viewer
 
 ## Tech Stack and Hardware
 
@@ -64,12 +60,10 @@ RK-MPI의 VI(Video Input) pipeline을 사용해 CSI camera module에서 frame을
 
 일반적인 흐름은 다음과 같습니다.
 
-```text
-Camera Sensor
-  └── VI channel
-        └── Frame buffer
-              └── Inference / Overlay stage
-```
+    Camera Sensor
+      └── VI channel
+            └── Frame buffer
+                  └── Inference / Overlay stage
 
 이 구조를 통해 CPU에서 직접 camera frame을 처리하는 방식보다 보드의 multimedia pipeline에 더 적합한 형태로 frame을 다룰 수 있습니다.
 
@@ -87,12 +81,10 @@ Camera Sensor
 
 NPU inference result에서 얻은 class, confidence, bounding box 좌표를 기반으로 보드 내부에서 영상 frame 위에 BBOX를 렌더링합니다.
 
-```text
-Inference result
-  └── label / score / bbox 좌표
-        └── frame overlay
-              └── encoded stream
-```
+    Inference result
+      └── label / score / bbox 좌표
+            └── frame overlay
+                  └── encoded stream
 
 이 단계가 중요한 이유는, 단순히 detection metadata를 출력하는 수준을 넘어 실제 video stream에 탐지 결과를 포함시키기 때문입니다.
 
@@ -102,15 +94,11 @@ Bounding box가 overlay된 frame은 video encoding pipeline을 거쳐 RTSP strea
 
 예상 접속 형태는 다음과 같습니다.
 
-```text
-rtsp://<BOARD_STATIC_IP>:<PORT>/<STREAM_PATH>
-```
+    rtsp://<BOARD_STATIC_IP>:<PORT>/<STREAM_PATH>
 
 예시:
 
-```text
-rtsp://172.30.1.100:8554/live/0
-```
+    rtsp://172.30.1.100:8554/live/0
 
 > 실제 RTSP URL은 구현 환경에 맞게 수정해야 합니다.
 
@@ -120,19 +108,15 @@ RTSP streaming system은 client가 보드 주소를 안정적으로 알고 있�
 
 이를 해결하기 위해 boot-time static IP script를 작성했습니다.
 
-```text
-Boot
-  └── wlan0 up
-        └── wpa_supplicant association
-              └── RUNNING flag 확인
-                    └── static IP / gateway / DNS 설정
-```
+    Boot
+      └── wlan0 up
+            └── wpa_supplicant association
+                  └── RUNNING flag 확인
+                        └── static IP / gateway / DNS 설정
 
 관련 script:
 
-```text
-scripts/S99staticip.sh
-```
+    scripts/S99staticip.sh
 
 이 static IP infrastructure 덕분에 전원 재인가 후에도 client가 동일한 주소로 RTSP stream에 접근할 수 있습니다.
 
@@ -142,38 +126,30 @@ scripts/S99staticip.sh
 
 보드의 `/etc/wpa_supplicant.conf`에 AP 정보를 입력합니다.
 
-```conf
-network={
-    ssid="YOUR_WIFI_SSID"
-    psk="YOUR_WIFI_PASSWORD"
-}
-```
+    network={
+        ssid="YOUR_WIFI_SSID"
+        psk="YOUR_WIFI_PASSWORD"
+    }
 
 ### 2. Static IP script 설치
 
-```bash
-cp scripts/S99staticip.sh /etc/init.d/S99staticip
-chmod +x /etc/init.d/S99staticip
-reboot
-```
+    cp scripts/S99staticip.sh /etc/init.d/S99staticip
+    chmod +x /etc/init.d/S99staticip
+    reboot
 
 ### 3. IP 할당 확인
 
 보드가 재부팅된 후 `wlan0`에 static IP가 설정되었는지 확인합니다.
 
-```bash
-ifconfig wlan0
-route -n
-cat /etc/resolv.conf
-```
+    ifconfig wlan0
+    route -n
+    cat /etc/resolv.conf
 
 ### 4. RTSP stream 실행
 
 보드에서 RK-MPI streaming application을 실행합니다.
 
-```bash
-./<YOUR_RKMPI_STREAMING_APP>
-```
+    ./<YOUR_RKMPI_STREAMING_APP>
 
 > 실제 실행 파일명과 옵션은 구현 코드 기준으로 수정해야 합니다.
 
@@ -181,15 +157,11 @@ cat /etc/resolv.conf
 
 VLC로 RTSP stream을 확인합니다.
 
-```bash
-rtsp://<BOARD_STATIC_IP>:<PORT>/<STREAM_PATH>
-```
+    rtsp://<BOARD_STATIC_IP>:<PORT>/<STREAM_PATH>
 
 예시:
 
-```bash
-rtsp://172.30.1.100:8554/live/0
-```
+    rtsp://172.30.1.100:8554/live/0
 
 ## Demo
 
@@ -197,9 +169,7 @@ rtsp://172.30.1.100:8554/live/0
 
 > 아래 링크는 GitHub issue/upload asset 또는 README에 업로드한 demo video URL로 교체하세요.
 
-```text
-Demo video: <ADD_DEMO_VIDEO_LINK>
-```
+    Demo video: <ADD_DEMO_VIDEO_LINK>
 
 추천 demo video 구성:
 
@@ -213,17 +183,15 @@ Demo video: <ADD_DEMO_VIDEO_LINK>
 
 > RTSP client 화면 캡처 이미지를 추가하세요.
 
-<img width="3514" height="1958" alt="vlc_addr" src="https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d" />
+<img width="3514" height="1958" alt="vlc_addr" src="[https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d](https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d)" />
 
 
 추천 파일 위치:
 
-```text
-02_rkmpi_wireless_streaming/
-└── assets/
-    ├── rtsp_demo.jpg
-    └── rtsp_demo.mp4
-```
+    02_rkmpi_wireless_streaming/
+    └── assets/
+        ├── rtsp_demo.jpg
+        └── rtsp_demo.mp4
 
 ## Performance Metrics
 
@@ -253,9 +221,10 @@ README에 최소한 아래 3개는 넣는 것을 추천합니다.
 
 ## Troubleshooting & Issues
 
-### 1. Problem: DHCP로 인해 보드 IP가 재부팅마다 변경됨
+### 1. Problem: Network Connecting Problem(WLAN) - uDHCPc Problem
 
-RTSP client는 보드의 IP 주소를 기준으로 stream에 접속합니다. 하지만 DHCP 환경에서는 보드가 재부팅될 때마다 IP가 바뀔 수 있어, 매번 새로운 주소를 확인해야 하는 문제가 발생했습니다.
+RTSP client는 보드의 IP 주소를 기준으로 stream에 접속합니다. 하지만 DHCP 환경에서는 보드가 재부팅될 때마다 IP가 바뀔 수 있어, 매번 새로운 주소를 확인해야 하는 문제가 발생.
+
 
 **Issue**
 
@@ -263,23 +232,24 @@ RTSP client는 보드의 IP 주소를 기준으로 stream에 접속합니다. �
 - RTSP client가 기존 URL로 접속할 수 없음
 - headless device 운용성이 떨어짐
 
+
 **Root Cause**
 
 - DHCP client인 `udhcpc`가 자동으로 IP를 재할당함
-- 사용자 script에서 static IP를 설정해도 이후 시스템 daemon이 다시 DHCP 주소를 덮어쓸 수 있음
+- 사용자 script에서 static IP를 설정해도 이후 시스템 daemon이 다시 DHCP 주소를 덮어씀
 - 단순히 IP가 생겼는지 확인하는 방식은 DHCP와 충돌할 수 있음
+
 
 **Solution**
 
-IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 Wi-Fi association이 완료됐는지 확인한 뒤 static IP를 주입했습니다.
+IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 Wi-Fi association이 완료됐는지 확인한 뒤 static IP를 주입.
 
-```sh
-if ifconfig wlan0 | grep -q "RUNNING"; then
-    ifconfig wlan0 172.30.1.100 netmask 255.255.255.0
-    route add default gw 172.30.1.254
-    echo "nameserver 8.8.8.8" > /etc/resolv.conf
-fi
-```
+    if ifconfig wlan0 | grep -q "RUNNING"; then
+        ifconfig wlan0 172.30.1.100 netmask 255.255.255.0
+        route add default gw 172.30.1.254
+        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+    fi
+
 
 **Result**
 
@@ -287,56 +257,38 @@ fi
 - RTSP client가 동일 URL로 보드에 접근 가능
 - headless wireless device 운용 기반 확보
 
-자세한 과정은 [`troubleshooting.md`](./troubleshooting.md)에 정리되어 있습니다.
 
-### 2. Problem: DHCP client와 custom static IP script의 race condition
+#### Trouble Shooting Flow
 
-초기에는 boot-time script에서 IP를 직접 설정했지만, 이후 `udhcpc`가 다시 IP를 덮어쓰는 문제가 있었습니다.
+**[Phase 1] Simple Application Script & Race Condition**
+* **시도:** `/etc/init.d/S99staticip` 스크립트를 생성하여 부팅 시 IP 수동 할당.
+* **증상:** 재부팅 시 IP가 다시 공유기 할당 주소로 회귀함(IP 주소 재할당).
+* **분석:** 백그라운드에서 실행되는 `udhcpc`(DHCP 클라이언트)가 사용자 설정을 무시하고 주소를 다시 덮어쓰는 **Race Condition(경쟁 상태)** 발생 확인.
 
-**Issue**
+**[Phase 2] Process Kill & Asynchronous Optimization**
+* **전략:** IP가 할당될 때까지 Polling, `killall -9 udhcpc`로 방해 요소를 제거, 고정 IP를 주입하는 로직 구현.
+* **최적화:** 네트워크 안정화 대기 시간 동안 부팅 시퀀스가 멈추는 것을 방지하기 위해 함수를 **Background(`&`)**로 실행하여 부팅 속도 보호.
+* **한계:** 특정 시점에 인터페이스가 재시작되며 주소가 롤백됨. `udhcpc` 프로세스를 죽여도 시스템 데몬에 의해 즉시 재실행(Respawn)되는 끈질긴 간섭 확인.
 
-- boot script에서 static IP 설정
-- 일정 시간 후 DHCP 주소로 롤백
-- static IP 설정이 안정적으로 유지되지 않음
+**[Phase 3] Root Cause Discovery**
+* **분석:** `grep -rn "udhcpc" /etc/init.d/`를 통해 부팅시 `udhcpc`를 소환하는 근본 스크립트 추적.
+* **발견:** `/etc/init.d/S99hciinit` 스크립트가 인터페이스 활성화와 동시에 DHCP 요청을 강제하고 있음을 식별. 커스텀 스크립트와 동일한 우선순위(`S99`)에서 발생하는 시스템 레이어의 충돌임을 확신.
 
-**Root Cause**
+**[Phase 4] Execution Priority Adjustment (Init.d Sequence)**
+* **시도:** 기본 스크립트를 S90hciinit으로 앞당기고, 커스텀 스크립트는 S99staticip로 유지함. 시스템이 먼저 Wi-Fi를 초기화, 마지막에 고정 IP 스크립트가 실행되어 주도권을 뺏어오는 전략 시도.
+* **한계:** 여전히 공유기 할당 주소로 IP가 덮어씌워지거나 설정 자체가 실패함.
+* **분석:** init.d의 실행 순서를 조작하더라도, **Rockchip 전용 네트워크 데몬**이 부팅 이후에도 L2 이벤트를 실시간 감시하며 udhcpc를 강제 호출한다는 것을 알게됨. 텍스트 스크립트 수정만으로는 하드코딩된 '상시 감시 및 자동 복구 메커니즘'을 막을 수 없음을 깨달음.
 
-- `udhcpc`가 boot sequence 또는 network daemon에 의해 재실행됨
-- init.d 실행 순서 조정만으로는 DHCP client의 재실행을 완전히 제어하기 어려움
+**[Phase 5] Strategy Shift: L2 vs L3**
+* **문제점:** DHCP 기능을 원천 차단하기 위해 바이너리를 `udhcpc_backup`으로 Renaming하자, 기존 커스텀 스크립트(`S99staticip`) 내의 "IP 주소가 할당되기를 기다리는 로직"이 조건을 충족하지 못해 무한 대기에 빠지는 논리적 모순 발생.
+* **기술적 통찰:** IP 주소 할당(L3 Network Layer) 과정이 없더라도, `wpa_supplicant` 데몬을 통한 와이파이 인증 및 연결(L2 Data Link Layer)이 완료되면 인터페이스에 `RUNNING` 플래그가 활성화된다는 점에 착안.
+* **최종 해결:** 1. **바이너리 무력화:** `udhcpc`의 이름을 변경하여 시스템의 자동 DHCP 요청 수단 자체를 물리적으로 제거.
+  2. **로직 개선:** IP 존재 여부가 아닌 L2 인터페이스의 **`RUNNING`(연결 신호)** 상태를 감지하여 즉시 고정 IP를 주입하는 방식으로 스크립트 고도화.
 
-**Solution**
-
-- `wpa_supplicant`를 통해 L2 Wi-Fi association을 먼저 확보
-- `wlan0 RUNNING` 상태를 확인
-- DHCP 주소가 아니라 static IP를 직접 주입
-- script를 background로 실행하여 boot blocking을 줄임
-
-**Result**
-
-- boot-time network setup의 안정성 개선
-- static IP 설정 타이밍을 L2 association 이후로 조정
-- network initialization flow에 대한 이해 확보
-
-### 3. Problem: RTSP stream을 안정적으로 확인하기 위한 evidence 부족
-
-RTSP streaming은 동작 여부를 글로만 설명하면 설득력이 부족합니다. 특히 포트폴리오에서는 실제 영상과 측정값이 있어야 구현 완료 여부를 강하게 증명할 수 있습니다.
-
-**Issue**
-
-- README만으로는 BBOX overlay와 RTSP stream 완료 여부를 확인하기 어려움
-- FPS, latency, resolution 등의 metric이 없으면 실시간성 판단이 어려움
-
-**Solution**
-
-- RTSP 수신 화면을 demo video로 업로드
-- 최소 metric을 측정해 Performance Metrics 표에 기록
-- 실행 명령, RTSP URL, client 환경을 README에 명시
-
-**Result**
-
-- 포트폴리오/README의 신뢰도 향상
-- 구현 완료 범위가 명확해짐
-- 향후 최적화 기준선 확보
+#### Key Achievements
+* **인프라 확정:** 시스템의 자동 복구 메커니즘과 충돌 없이 타겟 주소 고정 성공.
+* **성능 및 안정성:** 비동기 설계를 통해 부팅 지연 시간 0초 달성 및 외부 환경(DHCP 서버) 의존성 완벽 제거.
+* **역량 증명:** 단순 쉘 스크립팅을 넘어 **OS 초기화 시퀀스, 프로세스 생명주기, 네트워크 레이어(L2/L3)** 전반을 관통하는 임베디드 인프라 제어 역량 확보.
 
 ## Evidence to Add
 

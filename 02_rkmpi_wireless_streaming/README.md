@@ -10,7 +10,7 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 카메라 입력을 받�
 | :--- | :--- | :--- |
 | OS & Hardware Setup | Completed | Buildroot (Official Image) 사용 |
 | Wireless static IP setup | Completed | `scripts/S99staticip.sh` |
-| Network troubleshooting | Completed | `troubleshooting.md` |
+| Network troubleshooting | Completed | Troubleshooting & Issues |
 | Camera input pipeline | Completed | RK-MPI VI pipeline |
 | On-device object detection | Completed | RV1106 NPU inference |
 | On-device bounding box overlay | Completed | 보드 내부 BBOX rendering |
@@ -21,7 +21,6 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 카메라 입력을 받�
 
     02_rkmpi_wireless_streaming/
     ├── README.md
-    ├── troubleshooting.md
     └── scripts/
         └── S99staticip.sh
 

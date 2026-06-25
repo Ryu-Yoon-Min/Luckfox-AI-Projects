@@ -2,6 +2,8 @@
 
 Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 YOLOv5/RKNN 객체 탐지 결과를 로컬 Mac으로 가져와 OpenCV로 시각화하는 host-side pipeline입니다.
 
+Luckfox 보드 공부를 처음 시작할 때, 보드에서 추론한 값들이 터미널 출력 후 기록이 남지 않으며 시각화 처리가 되지 않은 문제가 있어 이를 해결하기 위해 다음을 고안해냈습니다.
+
 이 프로젝트의 핵심은 Edge device에서 발생한 추론 결과를 콘솔 출력으로만 확인하지 않고, 재사용 가능한 데이터 파일(`detections.txt`)로 분리한 뒤, 로컬 개발 환경에서 다시 파싱하고 시각화하는 구조를 만든 것입니다.
 
 ## Project Status
@@ -12,7 +14,7 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 YOLOv5/RKNN �
 | Host-side visualization | Completed | `auto_draw.py` |
 | Edge-to-host transfer script | Completed | `run.sh` |
 | Rendered output image | Completed | `result.jpg` |
-| Target-side C++ inference source | Completed | `src/main.cc` |
+| Target-side C++ inference source | Completed | `board_src/main.cc` |
 
 ## Repository Structure
 
@@ -24,12 +26,12 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 YOLOv5/RKNN �
     ├── coco_80_labels_list.txt
     ├── bus.jpg
     ├── result.jpg
-    └── src/
+    └── board_src/
         └── main.cc
 
 ## Pipeline Overview
 
-    RV1106 board (src/main.cc)
+    RV1106 board (board_src/main.cc)
       └── YOLOv5 / RKNN inference
             └── detections.txt 생성
                   └── SCP로 Mac에 전송 (run.sh)
@@ -40,7 +42,7 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 YOLOv5/RKNN �
 
 | File | Role |
 | :--- | :--- |
-| `src/main.cc` | 보드에서 실행되어 모델 추론 및 `detections.txt`를 생성하는 C++ 소스 코드 |
+| `board_src/main.cc` | 보드에서 실행되어 모델 추론 및 `detections.txt`를 생성하는 C++ 소스 코드 |
 | `bus.jpg` | 객체 탐지 결과를 시각화할 원본 이미지 |
 | `detections.txt` | 보드에서 생성한 객체 탐지 결과 좌표 데이터 |
 | `auto_draw.py` | 탐지 결과를 읽어 bounding box를 그리는 Python script |
@@ -83,7 +85,7 @@ Buildroot 대비 비교적 무겁지만, `nmcli`와 같은 고수준 네트워�
 
 기존 RV1106/RKNN 기반 YOLOv5 demo는 추론 결과를 주로 콘솔(`stdout`)에 출력하는 방식으로 확인합니다. 이 방식은 사람이 터미널에서 결과를 읽기에는 충분하지만, 외부 프로그램이 결과를 다시 사용하거나 시각화하기에는 적합하지 않습니다.
 
-이 프로젝트에서는 `src/main.cc`를 수정하여 보드에서 생성된 객체 탐지 결과를 `detections.txt`라는 line-based text file로 저장하고, host-side Python script가 해당 파일을 다시 읽어 시각화하도록 구성했습니다.
+이 프로젝트에서는 `board_src/main.cc`를 수정하여 보드에서 생성된 객체 탐지 결과를 `detections.txt`라는 line-based text file로 저장하고, host-side Python script가 해당 파일을 다시 읽어 시각화하도록 구성했습니다.
 
     [label] [x1] [y1] [x2] [y2] [confidence]
 
@@ -209,16 +211,17 @@ Luckfox 보드는 모니터를 직접 연결하지 않고 사용하는 경우가
 
 **Solution**
 
-이 문제는 `02_rkmpi_wireless_streaming` 프로젝트에서 static IP infrastructure로 분리해 해결합니다. 해당 프로젝트에서는 `wlan0`의 연결 상태를 확인한 뒤 static IP를 주입하는 init script를 작성했습니다.
+nmcli를 이용해 static IP를 부여하여 해결했습니다.
+차후 `02_rkmpi_wireless_streaming` 프로젝트에서 카메라 모듈 드라이버 문제로 OS로 Buildroot를 사용하게 되는데, nmcli와 같은 도구가 포함되어있지 않아 static IP infrastructure로 분리해 해결합니다.
+해당 프로젝트에서는 `wlan0`의 연결 상태를 확인한 뒤 static IP를 주입하는 init script를 작성했습니다.
 
 관련 문서:
 
 - [`02_rkmpi_wireless_streaming`](../02_rkmpi_wireless_streaming)
-- [`troubleshooting.md`](../02_rkmpi_wireless_streaming/troubleshooting.md)
 
 **Result**
 
-01 프로젝트의 host-side automation은 보드 IP가 안정적으로 유지될 때 더 잘 동작합니다. 따라서 01의 `run.sh`와 02의 static IP infrastructure는 서로 연결되는 작업입니다.
+- static IP를 부여하여 보드가 재부팅될 때 일정 주기마다 IP가 변하는 문제를 해결하여 headless/wireless 환경에서도 안정적인 통신이 가능함
 
 ## Result
 
@@ -232,7 +235,7 @@ Luckfox 보드는 모니터를 직접 연결하지 않고 사용하는 경우가
 
 이 프로젝트는 단순히 YOLO 결과 이미지를 보여주는 것이 아니라, Edge device와 host PC 사이의 데이터 흐름을 분리해 재현 가능한 pipeline으로 구성한 점에 의미가 있습니다.
 
-주요 역량은 다음과 같습니다.
+주요 역량:
 
 - Edge device에서 생성된 AI inference result의 구조화 (C++ 파일 입출력)
 - 보드와 host PC 사이의 SCP 기반 데이터 전송

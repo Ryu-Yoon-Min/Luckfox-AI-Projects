@@ -174,31 +174,12 @@ VLC로 RTSP stream을 확인합니다.
 
 ### RTSP Streaming Demo
 
-> 아래 링크는 GitHub issue/upload asset 또는 README에 업로드한 demo video URL로 교체하세요.
+https://github.com/user-attachments/assets/c397766c-768e-4e58-b90c-1e39d002bc95
 
-    Demo video: <ADD_DEMO_VIDEO_LINK>
-
-추천 demo video 구성:
-
-1. 보드 전원 인가
-2. static IP 확인
-3. RK-MPI streaming application 실행
-4. client에서 RTSP URL 접속
-5. 영상 위에 bounding box가 표시되는 장면 확인
 
 ### Screenshot
 
-> RTSP client 화면 캡처 이미지를 추가하세요.
-
 <img width="3514" height="1958" alt="vlc_addr" src="https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d" />
-
-
-추천 파일 위치:
-
-    02_rkmpi_wireless_streaming/
-    └── assets/
-        ├── rtsp_demo.jpg
-        └── rtsp_demo.mp4
 
 ## Performance Metrics
 
@@ -228,9 +209,10 @@ README에 최소한 아래 3개는 넣는 것을 추천합니다.
 
 ## Troubleshooting & Issues
 
-### 1. Problem: Network Connecting Problem(WLAN) - uDHCPc Problem
+### Problem: Network Connecting Problem(WLAN) - uDHCPc Problem
 
-Ubuntu 환경과 달리 Buildroot 환경에서는 `nmcli`를 사용할 수 없어 `wpa_supplicant.conf`를 통해 Wi-Fi를 연결해야 했습니다. RTSP client는 보드의 IP 주소를 기준으로 stream에 접속하지만, DHCP 환경에서는 보드가 재부팅될 때마다 IP가 바뀔 수 있어, 매번 새로운 주소를 확인해야 하는 문제가 발생했습니다.
+Ubuntu 환경과 달리 Buildroot 환경에서는 `nmcli`를 사용할 수 없어 `wpa_supplicant.conf`를 통해 Wi-Fi를 연결
+RTSP client는 보드의 IP 주소를 기준으로 stream에 접속하지만, DHCP 환경에서는 보드가 재부팅될 때마다 IP가 바뀔 수 있어 매번 새로운 주소를 확인해야 하는 문제가 발생
 
 **Issue**
 
@@ -246,7 +228,7 @@ Ubuntu 환경과 달리 Buildroot 환경에서는 `nmcli`를 사용할 수 없�
 
 **Solution**
 
-IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 Wi-Fi association이 완료됐는지 확인한 뒤 static IP를 주입.
+IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 Wi-Fi association이 완료됐는지 확인한 뒤 static IP를 주입
 
     if ifconfig wlan0 | grep -q "RUNNING"; then
         ifconfig wlan0 172.30.1.100 netmask 255.255.255.0
@@ -254,13 +236,7 @@ IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 
         echo "nameserver 8.8.8.8" > /etc/resolv.conf
     fi
 
-**Result**
-
-- DHCP 의존도를 줄이고 static IP 기반 접근 가능
-- RTSP client가 동일 URL로 보드에 접근 가능
-- headless wireless device 운용 기반 확보
-
-#### Trouble Shooting Flow
+### Trouble Shooting Flow
 
 **[Phase 1] Simple Application Script & Race Condition**
 * **시도:** `/etc/init.d/S99staticip` 스크립트를 생성하여 부팅 시 IP 수동 할당.
@@ -288,6 +264,14 @@ IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 
   1. **바이너리 무력화:** `udhcpc`의 이름을 변경하여 시스템의 자동 DHCP 요청 수단 자체를 물리적으로 제거.
   2. **로직 개선:** IP 존재 여부가 아닌 L2 인터페이스의 **`RUNNING`(연결 신호)** 상태를 감지하여 즉시 고정 IP를 주입하는 방식으로 스크립트 고도화.
 
+
+**Result**
+
+- DHCP 의존도를 줄이고 static IP 기반 접근 가능
+- RTSP client가 동일 URL로 보드에 접근 가능
+- headless wireless device 운용 기반 확보
+
+
 #### Key Achievements
 * **인프라 확정:** 시스템의 자동 복구 메커니즘과 충돌 없이 타겟 주소 고정 성공.
 * **성능 및 안정성:** 비동기 설계를 통해 부팅 지연 시간 0초 달성 및 외부 환경(DHCP 서버) 의존성 완벽 제거.
@@ -311,9 +295,9 @@ IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 
 
 ## What This Project Demonstrates
 
-이 프로젝트는 Luckfox RV1106 보드를 단순한 inference board가 아니라, 독립적으로 동작하는 wireless Edge AI streaming device로 구성하는 과정을 보여줍니다.
+이 프로젝트는 Luckfox RV1106 보드를 단순한 inference board가 아니라, 독립적으로 동작하는 wireless Edge AI streaming device로 구성하는 과정을 보임
 
-주요 역량은 다음과 같습니다.
+주요 역량:
 
 - 하드웨어 제약(CSI Camera)에 따른 OS 환경 전환 및 적응
 - RK-MPI 기반 camera capture pipeline 구성
@@ -332,8 +316,6 @@ IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 
 
 ## Next Improvements
 
-- RTSP demo video 업로드
-- RTSP client screenshot 추가
 - FPS, latency, resolution, bitrate 측정
 - CPU / memory usage 측정
 - RK-MPI streaming source code 정리

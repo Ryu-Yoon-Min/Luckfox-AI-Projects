@@ -12,36 +12,35 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 생성한 YOLOv5/RKNN �
 | Host-side visualization | Completed | `auto_draw.py` |
 | Edge-to-host transfer script | Completed | `run.sh` |
 | Rendered output image | Completed | `result.jpg` |
-| Target-side C++ inference source | Not included in this folder | 보드 측 SDK 수정 내용은 별도 보강 필요 |
+| Target-side C++ inference source | Completed | `src/main.cc` |
 
 ## Repository Structure
 
-```text
-01_image_inference_mac/
-├── README.md
-├── auto_draw.py
-├── run.sh
-├── detections.txt
-├── coco_80_labels_list.txt
-├── bus.jpg
-└── result.jpg
-```
+    01_image_inference_mac/
+    ├── README.md
+    ├── auto_draw.py
+    ├── run.sh
+    ├── detections.txt
+    ├── coco_80_labels_list.txt
+    ├── bus.jpg
+    ├── result.jpg
+    └── src/
+        └── main.cc
 
 ## Pipeline Overview
 
-```text
-RV1106 board
-  └── YOLOv5 / RKNN inference
-        └── detections.txt 생성
-              └── SCP로 Mac에 전송
-                    └── auto_draw.py 실행
-                          └── result.jpg 생성
-```
+    RV1106 board (src/main.cc)
+      └── YOLOv5 / RKNN inference
+            └── detections.txt 생성
+                  └── SCP로 Mac에 전송 (run.sh)
+                        └── auto_draw.py 실행
+                              └── result.jpg 생성
 
 ## Input and Output
 
 | File | Role |
 | :--- | :--- |
+| `src/main.cc` | 보드에서 실행되어 모델 추론 및 `detections.txt`를 생성하는 C++ 소스 코드 |
 | `bus.jpg` | 객체 탐지 결과를 시각화할 원본 이미지 |
 | `detections.txt` | 보드에서 생성한 객체 탐지 결과 좌표 데이터 |
 | `auto_draw.py` | 탐지 결과를 읽어 bounding box를 그리는 Python script |
@@ -53,19 +52,15 @@ RV1106 board
 
 `detections.txt`는 한 줄에 하나의 detected object를 저장합니다.
 
-```text
-[label] [x1] [y1] [x2] [y2] [confidence]
-```
+    [label] [x1] [y1] [x2] [y2] [confidence]
 
 예시는 다음과 같습니다.
 
-```text
-person 208 244 286 506 0.884140
-person 479 238 560 526 0.863770
-person 110 236 230 535 0.832502
-bus 94 130 553 464 0.697392
-person 79 354 122 516 0.349309
-```
+    person 208 244 286 506 0.884140
+    person 479 238 560 526 0.863770
+    person 110 236 230 535 0.832502
+    bus 94 130 553 464 0.697392
+    person 79 354 122 516 0.349309
 
 각 필드의 의미는 다음과 같습니다.
 
@@ -78,15 +73,19 @@ person 79 354 122 516 0.349309
 
 ## Key Implementation Details
 
-### 1. Custom Data Serialization Layer
+### 0. OS & Network Environment (Community Ubuntu 22.04)
+
+이 프로젝트에서는 Luckfox 커뮤니티에서 제공하는 **Ubuntu 22.04 이미지**를 사용했습니다. 
+Buildroot 대비 비교적 무겁지만, `nmcli`와 같은 고수준 네트워크 관리 도구 패키지를 기본적으로 사용할 수 있어 Wi-Fi 연결 및 네트워크 인프라 구성이 훨씬 용이했습니다. 
+(이후 '02_rkmpi_wirelsess_streaming/' 에서는 CSI 카메라 모듈 드라이버 제약으로 인해 Buildroot 기반으로 이관하며 네트워크 인프라를 직접 스크립팅하게 됩니다.)
+
+### 1. Custom Data Serialization Layer (C++ Inference)
 
 기존 RV1106/RKNN 기반 YOLOv5 demo는 추론 결과를 주로 콘솔(`stdout`)에 출력하는 방식으로 확인합니다. 이 방식은 사람이 터미널에서 결과를 읽기에는 충분하지만, 외부 프로그램이 결과를 다시 사용하거나 시각화하기에는 적합하지 않습니다.
 
-이 프로젝트에서는 보드에서 생성된 객체 탐지 결과를 `detections.txt`라는 line-based text file로 저장하고, host-side Python script가 해당 파일을 다시 읽어 시각화하도록 구성했습니다.
+이 프로젝트에서는 `src/main.cc`를 수정하여 보드에서 생성된 객체 탐지 결과를 `detections.txt`라는 line-based text file로 저장하고, host-side Python script가 해당 파일을 다시 읽어 시각화하도록 구성했습니다.
 
-```text
-[label] [x1] [y1] [x2] [y2] [confidence]
-```
+    [label] [x1] [y1] [x2] [y2] [confidence]
 
 이 구조를 사용하면 추론 결과가 콘솔에 일회성으로 출력되고 사라지는 것이 아니라, 다른 프로그램이 재사용할 수 있는 중간 산출물로 남습니다.
 
@@ -95,16 +94,12 @@ person 79 354 122 516 0.349309
 | Before | Console output | 사람이 읽을 수는 있지만 외부 프로그램과 연동하기 어려움 |
 | After | `detections.txt` file output | Python, OpenCV 등 host-side tool에서 재사용 가능 |
 
-> Note: 현재 이 폴더에는 target board에서 실행한 C++ inference source가 포함되어 있지 않습니다. 따라서 이 README에서는 공개 레포에서 확인 가능한 `detections.txt`, `run.sh`, `auto_draw.py`, `result.jpg` 중심으로 설명합니다.
-
 ### 2. Edge-to-Host Transfer Pipeline
 
 `run.sh`는 보드에서 생성된 `detections.txt`를 로컬 Mac으로 가져오고, 전송이 끝나면 곧바로 Python 시각화 script를 실행합니다.
 
-```bash
-scp pico@<BOARD_IP>:/home/pico/yolo_test/detections.txt ./
-python3 auto_draw.py
-```
+    scp pico@<BOARD_IP>:/home/pico/yolo_test/detections.txt ./
+    python3 auto_draw.py
 
 이 흐름을 통해 보드에서 추론을 수행한 뒤, 로컬 개발 환경에서 결과를 빠르게 확인할 수 있습니다.
 
@@ -119,9 +114,7 @@ python3 auto_draw.py
 
 `auto_draw.py`는 `detections.txt`를 한 줄씩 읽고, 각 줄을 공백 기준으로 분리하여 객체 class, bounding box 좌표, confidence score를 복원합니다.
 
-```python
-label, x1, y1, x2, y2, score = data[0], int(data[1]), int(data[2]), int(data[3]), int(data[4]), float(data[5])
-```
+    label, x1, y1, x2, y2, score = data[0], int(data[1]), int(data[2]), int(data[3]), int(data[4]), float(data[5])
 
 이 과정에서 텍스트 파일에 저장된 추론 결과가 Python 내부의 구조화된 값으로 변환됩니다.
 
@@ -129,16 +122,12 @@ label, x1, y1, x2, y2, score = data[0], int(data[1]), int(data[2]), int(data[3])
 
 파싱된 좌표를 기반으로 OpenCV를 사용해 원본 이미지 위에 bounding box와 label을 렌더링합니다.
 
-```python
-cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-cv2.putText(img, f"{label} {score:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-```
+    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    cv2.putText(img, f"{label} {score:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
 렌더링이 끝나면 결과 이미지를 `result.jpg`로 저장합니다.
 
-```python
-cv2.imwrite('result.jpg', img)
-```
+    cv2.imwrite('result.jpg', img)
 
 ### 5. Headless Development Workflow
 
@@ -152,23 +141,17 @@ Luckfox 보드는 모니터 없이 headless 환경에서 운용되는 경우가 
 
 `run.sh`는 보드 내부의 `detections.txt`를 로컬 폴더로 복사한 뒤, Python 시각화 script를 실행합니다.
 
-```bash
-bash run.sh
-```
+    bash run.sh
 
 현재 `run.sh`에는 보드 IP가 마스킹되어 있으므로, 실제 실행 전에는 자신의 네트워크 환경에 맞게 보드 IP를 설정해야 합니다.
 
-```bash
-scp pico@<BOARD_IP>:/home/pico/yolo_test/detections.txt ./
-```
+    scp pico@<BOARD_IP>:/home/pico/yolo_test/detections.txt ./
 
 ### 2. 로컬 파일만으로 시각화 실행하기
 
 이미 `detections.txt`와 `bus.jpg`가 로컬에 있다면, Python script만 직접 실행할 수 있습니다.
 
-```bash
-python3 auto_draw.py
-```
+    python3 auto_draw.py
 
 실행 후 `result.jpg`가 생성됩니다.
 
@@ -237,23 +220,6 @@ Luckfox 보드는 모니터를 직접 연결하지 않고 사용하는 경우가
 
 01 프로젝트의 host-side automation은 보드 IP가 안정적으로 유지될 때 더 잘 동작합니다. 따라서 01의 `run.sh`와 02의 static IP infrastructure는 서로 연결되는 작업입니다.
 
-### 4. Current Limitation: 보드 측 C++ 코드가 이 폴더에 포함되어 있지 않음
-
-현재 이 폴더에는 host-side visualization pipeline의 산출물과 코드가 중심으로 포함되어 있습니다. 반면 보드에서 RKNN inference를 수행하고 `detections.txt`를 생성하는 C++ source는 아직 이 폴더에 포함되어 있지 않습니다.
-
-**Impact**
-
-- 보드 측 전체 inference flow를 GitHub만으로 완전히 재현하기 어려움
-- `detections.txt`가 어떤 target-side 코드에서 생성됐는지 추적하기 어려움
-- 포트폴리오 평가자가 target-side 구현 근거를 확인하기 어려움
-
-**Next Action**
-
-- 보드 측 inference source 또는 patch diff 추가
-- RKNN demo 수정 지점 문서화
-- `detections.txt` 생성 위치와 실행 명령 기록
-- PyTorch -> ONNX -> RKNN 변환 과정 문서화
-
 ## Result
 
 최종 결과는 `result.jpg`로 저장됩니다.
@@ -268,7 +234,7 @@ Luckfox 보드는 모니터를 직접 연결하지 않고 사용하는 경우가
 
 주요 역량은 다음과 같습니다.
 
-- Edge device에서 생성된 AI inference result의 구조화
+- Edge device에서 생성된 AI inference result의 구조화 (C++ 파일 입출력)
 - 보드와 host PC 사이의 SCP 기반 데이터 전송
 - 텍스트 기반 detection result parsing
 - OpenCV를 활용한 bounding box visualization
@@ -277,13 +243,10 @@ Luckfox 보드는 모니터를 직접 연결하지 않고 사용하는 경우가
 
 ## Current Limitations
 
-현재 이 폴더에는 target board에서 실행한 C++ 추론 코드 원본이나 RKNN 변환 과정이 포함되어 있지 않습니다. 따라서 이 README에서는 보드 측 전체 inference implementation을 완성된 형태로 설명하기보다, 공개 레포에서 확인 가능한 host-side visualization pipeline을 중심으로 설명합니다.
-
-또한 현재 예제는 단일 이미지(`bus.jpg`)와 단일 결과 파일(`detections.txt`)을 기준으로 동작합니다. 여러 이미지나 영상 스트림에 대한 batch processing은 아직 포함되어 있지 않습니다.
+현재 예제는 단일 이미지(`bus.jpg`)와 단일 결과 파일(`detections.txt`)을 기준으로 동작합니다. 여러 이미지나 영상 스트림에 대한 batch processing은 아직 포함되어 있지 않습니다.
 
 ## Next Improvements
 
-- 보드 측 C++ inference result 저장 코드 추가
 - PyTorch -> ONNX -> RKNN 변환 과정 문서화
 - RKNN model file 생성 로그 및 설정 추가
 - 실제 보드 실행 명령 정리

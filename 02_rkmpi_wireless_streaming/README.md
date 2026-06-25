@@ -8,6 +8,7 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 카메라 입력을 받�
 
 | Component | Status | Evidence |
 | :--- | :--- | :--- |
+| OS & Hardware Setup | Completed | Buildroot (Official Image) 사용 |
 | Wireless static IP setup | Completed | `scripts/S99staticip.sh` |
 | Network troubleshooting | Completed | `troubleshooting.md` |
 | Camera input pipeline | Completed | RK-MPI VI pipeline |
@@ -45,16 +46,24 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 카메라 입력을 받�
 | Board | Luckfox Pico Ultra BW |
 | SoC | Rockchip RV1106 |
 | AI Accelerator | RV1106 NPU |
-| Camera | CSI camera module |
+| Camera | SC3336 3MP CSI Camera Module |
 | Media Framework | RK-MPI |
 | Network | Wi-Fi, static IP, RTSP |
-| OS | Embedded Linux / Buildroot |
+| OS | Embedded Linux / **Buildroot (Official Image)** |
 | Scripts | Shell script, init.d boot script |
 | Client Viewer | VLC, ffplay, or RTSP-compatible viewer |
 
 ## Key Implementation Details
 
-### 1. RK-MPI Camera Capture Pipeline
+### 1. OS Selection: Why Buildroot?
+
+이전 이미지 추론 프로젝트(`01_image_inference`)에서는 네트워크 설정이 편리한 Ubuntu 22.04(Community Image)를 사용했습니다. 그러나 본 스트리밍 프로젝트에서는 **공식 지원 이미지인 Buildroot**로 OS 환경을 변경해야만 했습니다.
+
+Luckfox 공식 위키에 따르면, 프로젝트에 사용된 SC3336 CSI 카메라 모듈 튜토리얼은 오직 Buildroot 시스템에만 적용되며, 현재 Ubuntu 환경은 지원하지 않기 때문입니다.
+
+이러한 하드웨어 드라이버 지원 제약으로 인해 OS를 이관하였고, 이는 필연적으로 `nmcli`와 같은 고수준 네트워크 툴의 부재로 이어져 아래와 같은 커스텀 네트워크 인프라 구축(wpa_supplicant 직접 제어 및 init.d 스크립팅)을 요구하게 되었습니다.
+
+### 2. RK-MPI Camera Capture Pipeline
 
 RK-MPI의 VI(Video Input) pipeline을 사용해 CSI camera module에서 frame을 입력받습니다. 이 단계는 실시간 video stream의 시작점이며, 이후 NPU inference와 encoding pipeline으로 연결됩니다.
 
@@ -67,7 +76,7 @@ RK-MPI의 VI(Video Input) pipeline을 사용해 CSI camera module에서 frame을
 
 이 구조를 통해 CPU에서 직접 camera frame을 처리하는 방식보다 보드의 multimedia pipeline에 더 적합한 형태로 frame을 다룰 수 있습니다.
 
-### 2. On-Device Object Detection
+### 3. On-Device Object Detection
 
 입력 frame에 대해 RV1106 NPU에서 객체 탐지를 수행합니다. 이 프로젝트에서는 객체 탐지 결과를 외부 PC로 보내서 그리는 방식이 아니라, 보드 내부에서 inference result를 기반으로 bounding box를 렌더링하는 구조를 목표로 합니다.
 
@@ -77,7 +86,7 @@ RK-MPI의 VI(Video Input) pipeline을 사용해 CSI camera module에서 frame을
 - RTSP stream을 수신하는 쪽에서는 이미 BBOX가 포함된 영상을 바로 확인할 수 있음
 - Edge device가 inference와 visualization을 모두 담당하는 구조로 보안과 실시간 처리에 유리함
 
-### 3. On-Device Bounding Box Overlay
+### 4. On-Device Bounding Box Overlay
 
 NPU inference result에서 얻은 class, confidence, bounding box 좌표를 기반으로 보드 내부에서 영상 frame 위에 BBOX를 렌더링합니다.
 
@@ -88,7 +97,7 @@ NPU inference result에서 얻은 class, confidence, bounding box 좌표를 기�
 
 이 단계가 중요한 이유는, 단순히 detection metadata를 출력하는 수준을 넘어 실제 video stream에 탐지 결과를 포함시키기 때문입니다.
 
-### 4. RK-MPI Encoding and RTSP Streaming
+### 5. RK-MPI Encoding and RTSP Streaming
 
 Bounding box가 overlay된 frame은 video encoding pipeline을 거쳐 RTSP stream으로 전송됩니다. 외부 client는 동일 네트워크에서 RTSP URL에 접속해 실시간 객체 탐지 영상을 확인할 수 있습니다.
 
@@ -100,15 +109,15 @@ Bounding box가 overlay된 frame은 video encoding pipeline을 거쳐 RTSP strea
 
     rtsp://172.30.1.100:554/live/0
 
-### 5. Wireless Static IP Infrastructure
+### 6. Wireless Static IP Infrastructure
 
-RTSP streaming system은 client가 보드 주소를 안정적으로 알고 있어야 합니다. 하지만 DHCP 환경에서는 보드가 재부팅될 때마다 IP가 바뀔 수 있어, RTSP client가 지속적으로 접근하기 어렵습니다.
+RTSP streaming system은 client가 보드 주소를 안정적으로 알고 있어야 합니다. 하지만 DHCP 환경에서는 보드가 재부팅될 때마다 IP가 바뀔 수 있어, RTSP client가 지속적으로 접근하기 어렵습니다. 
 
-이를 해결하기 위해 boot-time static IP script를 작성했습니다.
+Buildroot 환경에서는 `nmcli`가 없으므로 이를 해결하기 위해 boot-time static IP script를 직접 작성했습니다.
 
     Boot
       └── wlan0 up
-            └── wpa_supplicant association
+            └── wpa_supplicant association (wpa_supplicant.conf)
                   └── RUNNING flag 확인
                         └── static IP / gateway / DNS 설정
 
@@ -122,7 +131,7 @@ RTSP streaming system은 client가 보드 주소를 안정적으로 알고 있�
 
 ### 1. Wi-Fi 설정
 
-보드의 `/etc/wpa_supplicant.conf`에 AP 정보를 입력합니다.
+Buildroot 환경이므로 `wpa_supplicant`를 직접 제어합니다. 보드의 `/etc/wpa_supplicant.conf`에 AP 정보를 입력합니다.
 
     network={
         ssid="YOUR_WIFI_SSID"
@@ -181,7 +190,7 @@ VLC로 RTSP stream을 확인합니다.
 
 > RTSP client 화면 캡처 이미지를 추가하세요.
 
-<img width="3514" height="1958" alt="vlc_addr" src="[https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d](https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d)" />
+<img width="3514" height="1958" alt="vlc_addr" src="https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d" />
 
 
 추천 파일 위치:
@@ -221,8 +230,7 @@ README에 최소한 아래 3개는 넣는 것을 추천합니다.
 
 ### 1. Problem: Network Connecting Problem(WLAN) - uDHCPc Problem
 
-RTSP client는 보드의 IP 주소를 기준으로 stream에 접속합니다. 하지만 DHCP 환경에서는 보드가 재부팅될 때마다 IP가 바뀔 수 있어, 매번 새로운 주소를 확인해야 하는 문제가 발생.
-
+Ubuntu 환경과 달리 Buildroot 환경에서는 `nmcli`를 사용할 수 없어 `wpa_supplicant.conf`를 통해 Wi-Fi를 연결해야 했습니다. RTSP client는 보드의 IP 주소를 기준으로 stream에 접속하지만, DHCP 환경에서는 보드가 재부팅될 때마다 IP가 바뀔 수 있어, 매번 새로운 주소를 확인해야 하는 문제가 발생했습니다.
 
 **Issue**
 
@@ -230,13 +238,11 @@ RTSP client는 보드의 IP 주소를 기준으로 stream에 접속합니다. �
 - RTSP client가 기존 URL로 접속할 수 없음
 - headless device 운용성이 떨어짐
 
-
 **Root Cause**
 
 - DHCP client인 `udhcpc`가 자동으로 IP를 재할당함
 - 사용자 script에서 static IP를 설정해도 이후 시스템 daemon이 다시 DHCP 주소를 덮어씀
 - 단순히 IP가 생겼는지 확인하는 방식은 DHCP와 충돌할 수 있음
-
 
 **Solution**
 
@@ -248,13 +254,11 @@ IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 
         echo "nameserver 8.8.8.8" > /etc/resolv.conf
     fi
 
-
 **Result**
 
 - DHCP 의존도를 줄이고 static IP 기반 접근 가능
 - RTSP client가 동일 URL로 보드에 접근 가능
 - headless wireless device 운용 기반 확보
-
 
 #### Trouble Shooting Flow
 
@@ -287,7 +291,7 @@ IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 
 #### Key Achievements
 * **인프라 확정:** 시스템의 자동 복구 메커니즘과 충돌 없이 타겟 주소 고정 성공.
 * **성능 및 안정성:** 비동기 설계를 통해 부팅 지연 시간 0초 달성 및 외부 환경(DHCP 서버) 의존성 완벽 제거.
-* **역량 증명:** 단순 쉘 스크립팅을 넘어 **OS 초기화 시퀀스, 프로세스 생명주기, 네트워크 레이어(L2/L3)** 전반을 관통하는 임베디드 인프라 제어 역량 확보.
+* **역량 증명:** OS 환경의 제약(Buildroot)으로 인한 하위 레벨 제어 필요성을 정확히 인지하고, 단순 쉘 스크립팅을 넘어 **OS 초기화 시퀀스, 프로세스 생명주기, 네트워크 레이어(L2/L3)** 전반을 관통하는 임베디드 인프라 제어 역량 확보.
 
 ## Evidence to Add
 
@@ -311,11 +315,12 @@ IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 
 
 주요 역량은 다음과 같습니다.
 
+- 하드웨어 제약(CSI Camera)에 따른 OS 환경 전환 및 적응
 - RK-MPI 기반 camera capture pipeline 구성
 - RV1106 NPU 기반 on-device inference
 - 보드 내부 bounding box overlay
 - RTSP 기반 wireless video streaming
-- Embedded Linux boot-time network configuration
+- Embedded Linux(Buildroot) boot-time network configuration
 - DHCP, Wi-Fi association, static IP 설정 문제의 root-cause analysis
 - Headless edge device 운용을 위한 네트워크 안정화
 

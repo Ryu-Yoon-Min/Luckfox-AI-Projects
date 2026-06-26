@@ -31,22 +31,33 @@ Luckfox 보드 공부를 처음 시작할 때, 보드에서 추론한 값들이 
 
 ## Pipeline Overview
 
-    RV1106 board (board_src/main.cc)
-      └── YOLOv5 / RKNN inference
-            └── detections.txt 생성
-                  └── SCP로 Mac에 전송 (run.sh)
-                        └── auto_draw.py 실행
-                              └── result.jpg 생성
+Host(Mac)와 Edge(RV1106 보드) 환경이 명확히 분리된 파이프라인으로 동작합니다.
+
+    [Edge: RV1106 Board]
+    rknn_yolov5_demo (크로스 컴파일된 실행 파일)
+      ├── yolov5s-640-640.rknn (NPU 모델)
+      └── bus.jpg (입력 이미지)
+            └── NPU Inference 실행
+                  └── detections.txt 생성
+                        │
+                        ▼ (SCP Transfer)
+    [Host: Mac Local]
+    run.sh 실행 (가져오기 및 시각화 자동화)
+      └── detections.txt 파싱
+            └── auto_draw.py 실행
+                  └── result.jpg 생성
 
 ## Input and Output
 
 | File | Role |
 | :--- | :--- |
-| `board_src/main.cc` | 보드에서 실행되어 모델 추론 및 `detections.txt`를 생성하는 C++ 소스 코드 |
+| `board_src/main.cc` | 바이너리를 생성하기 위한 C++ 소스 코드 설계도 (도커에서 컴파일됨) |
+| `rknn_yolov5_demo` | `main.cc`를 크로스 컴파일하여 만든 **보드 구동용 바이너리 실행 파일** |
+| `yolov5s-640-640.rknn` | PyTorch/ONNX에서 사전 양자화 및 컴파일이 완료된 **RV1106 NPU 전용 모델 파일** |
 | `bus.jpg` | 객체 탐지 결과를 시각화할 원본 이미지 |
-| `detections.txt` | 보드에서 생성한 객체 탐지 결과 좌표 데이터 |
-| `auto_draw.py` | 탐지 결과를 읽어 bounding box를 그리는 Python script |
-| `run.sh` | 보드에서 `detections.txt`를 가져오고 시각화 script를 실행하는 자동화 script |
+| `detections.txt` | 보드에서 실행 파일이 만들어낸 객체 탐지 결과 좌표 데이터 |
+| `auto_draw.py` | 탐지 결과를 읽어 bounding box를 그리는 Python script (Mac에서 실행) |
+| `run.sh` | 보드에서 `detections.txt`를 가져오고 시각화 script를 실행하는 자동화 script (Mac에서 실행) |
 | `result.jpg` | bounding box와 label이 렌더링된 최종 이미지 |
 | `coco_80_labels_list.txt` | COCO class label reference |
 
@@ -85,7 +96,7 @@ Buildroot 대비 비교적 무겁지만, `nmcli`와 같은 고수준 네트워�
 
 기존 RV1106/RKNN 기반 YOLOv5 demo는 추론 결과를 주로 콘솔(`stdout`)에 출력하는 방식으로 확인합니다. 이 방식은 사람이 터미널에서 결과를 읽기에는 충분하지만, 외부 프로그램이 결과를 다시 사용하거나 시각화하기에는 적합하지 않습니다.
 
-이 프로젝트에서는 `board_src/main.cc`를 수정하여 보드에서 생성된 객체 탐지 결과를 `detections.txt`라는 line-based text file로 저장하고, host-side Python script가 해당 파일을 다시 읽어 시각화하도록 구성했습니다.
+이 프로젝트에서는 board_src/main.cc 소스 코드를 수정하고 크로스 컴파일하여 rknn_yolov5_demo 바이너리 실행 파일을 생성합니다. 이후 해당 바이너리가 보드에서 추론을 수행하며 객체 탐지 결과를 detections.txt라는 line-based text file로 저장하고, 최종적으로 host-side Python script가 이 파일을 다시 읽어 시각화하도록 전체 흐름을 구성했습니다.
 
     [label] [x1] [y1] [x2] [y2] [confidence]
 
@@ -114,7 +125,7 @@ Buildroot 대비 비교적 무겁지만, `nmcli`와 같은 고수준 네트워�
 
 ### 3. Host-Side Parsing Pipeline
 
-`auto_draw.py`는 `detections.txt`를 한 줄씩 읽고, 각 줄을 공백 기준으로 분리하여 객체 class, bounding box 좌표, confidence score를 복 복원합니다.
+`auto_draw.py`는 `detections.txt`를 한 줄씩 읽고, 각 줄을 공백 기준으로 분리하여 객체 class, bounding box 좌표, confidence score를 복원합니다.
 
     label, x1, y1, x2, y2, score = data[0], int(data[1]), int(data[2]), int(data[3]), int(data[4]), float(data[5])
 
@@ -159,13 +170,13 @@ Luckfox 보드는 모니터 없이 headless 환경에서 운용되는 경우가 
 2. **C++ 소스 코드 커스텀 및 영속화:** 정지 이미지 추론의 결과물(Class, Bounding Box 좌표, Confidence)이 휘발되지 않도록, `board_src/main.cc` 내부의 Post-Process 결과 루프를 수정하여 파일 시스템에 로그를 기록하는 `fprintf` 기반의 파일 출력 로직(`detections.txt`)을 커스텀 구현했습니다.
 
 3. **컴파일 및 바이너리 빌드:** CMake 및 Make 빌드 시퀀스를 통해 `/work/rknpu2/examples/RV1106_RV1103/rknn_yolov5_demo/build/build_linux_arm` 경로에서 보드 구동용 최종 실행 파일을 생성했습니다.
-<img width="2346" height="366" alt="스크린샷 2026-06-26 오후 2 43 31" src="https://github.com/user-attachments/assets/3679ba04-44c7-48b8-b15f-1ff7303406c3" />
+<img width="2346" height="366" alt="스크린샷 2026-06-26 오후 2 43 31" src="https://github.com/user-attachments/assets/3679ba04-44c7-48b8-b15f-1ff7303406c3" />
 
 
 #### 6.3. Binary Verification (Smoking Gun)
 
 크로스 컴파일 완료 후 생성된 바이너리:
-<img width="3576" height="270" alt="스크린샷 2026-06-26 오후 2 38 23" src="https://github.com/user-attachments/assets/9014fde3-4134-44b3-8f0e-c282cf6d9de4" />
+<img width="3576" height="270" alt="스크린샷 2026-06-26 오후 2 38 23" src="https://github.com/user-attachments/assets/9014fde3-4134-44b3-8f0e-c282cf6d9de4" />
 
 - **`ARM, 32-bit`:** 호스트 PC(64비트) 환경이 아닌 RV1106 프로세서(32비트 ARM) 아키텍처용 바이너리로 정확히 크로스 컴파일됨을 증명.
 - **`interpreter /lib/ld-linux-armhf.so.3`:** 02번 스트리밍 프로젝트(Buildroot/uClibc)와 달리, 본 프로젝트는 Ubuntu OS 환경에 맞춰 **`glibc` 표준 링크 인터프리터**를 참조하도록 맞춤형 빌드가 완료되었음을 기술적으로 증명.
@@ -173,23 +184,34 @@ Luckfox 보드는 모니터 없이 headless 환경에서 운용되는 경우가 
 
 ## How to Run
 
-### 1. 보드에서 결과 파일 가져오기
+### 1. 보드에서 NPU 추론 실행하기 (Edge)
 
-`run.sh`는 보드 내부의 `detections.txt`를 로컬 폴더로 복사한 뒤, Python 시각화 script를 실행합니다.
+먼저 보드에 SSH로 접속하여 크로스 컴파일된 바이너리 파일과 사전 준비된 RKNN 모델을 사용하여 객체 탐지를 수행합니다. 바이너리는 실행 시 첫 번째 인자로 모델 경로, 두 번째 인자로 이미지 경로를 입력받습니다.
 
+    # 보드 내부 터미널
+    cd /home/pico/yolo_test
+    ./rknn_yolov5_demo ./model/RV1106/yolov5s-640-640.rknn ./model/bus.jpg
+
+실행이 완료되면 동일한 작업 경로에 `detections.txt` 파일이 생성됩니다.
+
+### 2. Mac으로 결과 가져오기 및 시각화 (Host)
+
+보드에서의 추론 작업이 끝나면, 로컬 Mac 터미널에서 `run.sh`를 실행하여 보드 내부의 `detections.txt`를 가져온 뒤 Python 시각화 script를 자동으로 연계 실행합니다.
+
+    # 로컬 Mac 터미널
     bash run.sh
 
 현재 `run.sh`에는 보드 IP가 마스킹되어 있으므로, 실제 실행 전에는 자신의 네트워크 환경에 맞게 보드 IP를 설정해야 합니다.
 
     scp pico@<BOARD_IP>:/home/pico/yolo_test/detections.txt ./
 
-### 2. 로컬 파일만으로 시각화 실행하기
+### 3. 로컬 파일만으로 시각화 실행하기 (Optional)
 
-이미 `detections.txt`와 `bus.jpg`가 로컬에 있다면, Python script만 직접 실행할 수 있습니다.
+이미 `detections.txt`와 `bus.jpg`가 로컬에 있다면, SCP 과정 없이 Python script만 직접 실행할 수 있습니다.
 
     python3 auto_draw.py
 
-실행 후 `result.jpg`가 생성됩니다.
+실행 후 Mac 로컬에 bounding box가 그려진 `result.jpg`가 생성됩니다.
 
 ## Troubleshooting & Issues
 
@@ -280,12 +302,14 @@ nmcli를 이용해 static IP를 부여하여 해결했습니다.
 
 ## Current Limitations
 
-현재 예제는 단일 이미지(`bus.jpg`)와 단일 결과 파일(`detections.txt`)을 기준으로 동작합니다. 여러 이미지나 영상 스트림에 대한 batch processing은 아직 포함되어 있지 않습니다.
+현재 예제는 단일 이미지(`bus.jpg`)와 단일 결과 파일(`detections.txt`)을 기준으로 동작합니다. 여러 이미지나 영상 스트림에 대한 batch processing은 아직 포함되어 있지 않습니다. 또한, PyTorch 모델을 `.rknn`으로 변환하는 사전 양자화 과정은 본 파이프라인에서 제외되어 있습니다.
 
 ## Next Improvements
 
-- PyTorch -> ONNX -> RKNN 변환 과정 문서화
+- PyTorch -> ONNX -> RKNN 변환 과정 문서화 (사전 양자화 파이프라인 분리)
 - RKNN model file 생성 로그 및 설정 추가
 - 실제 보드 실행 명령 정리
 - 여러 입력 이미지에 대한 batch visualization 지원
+- confidence threshold 조정 옵션 추가
 - 결과 파일 format을 JSON 또는 CSV로 확장 검토
+- 02 프로젝트의 RK-MPI streaming pipeline과 연결

@@ -325,20 +325,3 @@ nmcli를 이용해 static IP를 부여하여 해결했습니다.
 현재 예제는 단일 이미지(`bus.jpg`)와 단일 결과 파일(`detections.txt`)을 기준으로 동작합니다. 여러 이미지나 영상 스트림에 대한 batch processing은 아직 포함되어 있지 않습니다. 
 
 또한, PyTorch 모델을 ONNX로 추출하고 `.rknn` 포맷으로 변환하는 **사전 양자화(PTQ) 과정은 본 문서의 범위를 벗어나므로 생략**되었습니다. 해당 모델 변환 파이프라인은 후속 프로젝트인 [`02_rkmpi_wireless_streaming`](../02_rkmpi_wireless_streaming)에서 상세히 다루고 있습니다.
-
-## Next Improvements
-
-- 실제 보드 실행 명령 및 파라미터 정리 (완료)
-- 여러 입력 이미지에 대한 batch visualization 지원
-- confidence threshold 조정 옵션 추가
-- 결과 파일 format을 JSON 또는 CSV로 확장 검토
-- **02 프로젝트(`02_rkmpi_wireless_streaming`)와 연계하여 정지 이미지 추론을 실시간 RTSP 스트리밍 파이프라인으로 확장**
-## Next Improvements
-
-- PyTorch -> ONNX -> RKNN 변환 과정 문서화 (사전 양자화 파이프라인 분리)
-- RKNN model file 생성 로그 및 설정 추가
-- 실제 보드 실행 명령 정리
-- 여러 입력 이미지에 대한 batch visualization 지원
-- confidence threshold 조정 옵션 추가
-- 결과 파일 format을 JSON 또는 CSV로 확장 검토
-- 02 프로젝트의 RK-MPI streaming pipeline과 연결

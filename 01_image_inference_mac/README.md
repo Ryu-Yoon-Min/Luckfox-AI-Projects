@@ -184,34 +184,53 @@ Luckfox 보드는 모니터 없이 headless 환경에서 운용되는 경우가 
 
 ## How to Run
 
-### 1. 보드에서 NPU 추론 실행하기 (Edge)
+### 1. 바이너리 및 모델을 보드로 전송하기 (Host ➔ Edge)
 
-먼저 보드에 SSH로 접속하여 크로스 컴파일된 바이너리 파일과 사전 준비된 RKNN 모델을 사용하여 객체 탐지를 수행합니다. 바이너리는 실행 시 첫 번째 인자로 모델 경로, 두 번째 인자로 이미지 경로를 입력받습니다.
+Docker 컨테이너 환경에서 크로스 컴파일을 마친 바이너리(`rknn_yolov5_demo`)와 사전에 준비된 NPU 모델(`.rknn`), 그리고 테스트할 이미지(`bus.jpg`)를 보드(RV1106)로 전송합니다.
 
-    # 보드 내부 터미널
+    # 보드의 /home/pico/yolo_test 디렉토리 구조가 미리 생성되어 있다고 가정합니다.
+
+    # 1. 실행 파일 전송
+    scp ./build/build_linux_arm/rknn_yolov5_demo pico@<BOARD_IP>:/home/pico/yolo_test/
+    
+    # 2. 모델 및 이미지 파일 전송
+    scp ./model/RV1106/yolov5s-640-640.rknn pico@<BOARD_IP>:/home/pico/yolo_test/model/RV1106/
+    scp ./model/bus.jpg pico@<BOARD_IP>:/home/pico/yolo_test/model/
+
+### 2. 보드에서 NPU 추론 실행하기 (Edge)
+
+파일 전송이 완료되면 보드에 SSH로 접속하여 객체 탐지를 수행합니다. 바이너리 실행 시 첫 번째 인자로 모델 경로, 두 번째 인자로 이미지 경로를 입력받습니다. 
+
+*(주의: SCP로 전송된 실행 파일은 실행 권한이 해제되어 있을 수 있으므로 `chmod +x`를 먼저 적용합니다.)*
+
     cd /home/pico/yolo_test
+    chmod +x rknn_yolov5_demo  # 실행 권한 부여
+    
+    # 추론 실행
     ./rknn_yolov5_demo ./model/RV1106/yolov5s-640-640.rknn ./model/bus.jpg
 
-실행이 완료되면 동일한 작업 경로에 `detections.txt` 파일이 생성됩니다.
+실행이 완료되면 NPU 추론 결과가 파싱되어 동일한 작업 경로에 `detections.txt` 파일로 생성됩니다.
 
-### 2. Mac으로 결과 가져오기 및 시각화 (Host)
+### 3. Mac으로 결과 가져오기 및 시각화 (Host)
 
 보드에서의 추론 작업이 끝나면, 로컬 Mac 터미널에서 `run.sh`를 실행하여 보드 내부의 `detections.txt`를 가져온 뒤 Python 시각화 script를 자동으로 연계 실행합니다.
 
     # 로컬 Mac 터미널
     bash run.sh
 
-현재 `run.sh`에는 보드 IP가 마스킹되어 있으므로, 실제 실행 전에는 자신의 네트워크 환경에 맞게 보드 IP를 설정해야 합니다.
+현재 `run.sh` 내부의 SCP 명령어에는 보드 IP가 마스킹되어 있으므로, 실제 실행 전 자신의 네트워크 환경에 맞게 보드 IP를 수정해야 합니다.
 
+    # run.sh 내부 스크립트 예시
     scp pico@<BOARD_IP>:/home/pico/yolo_test/detections.txt ./
 
-### 3. 로컬 파일만으로 시각화 실행하기 (Optional)
+### 4. 로컬 파일만으로 시각화 실행하기 (Optional)
 
-이미 `detections.txt`와 `bus.jpg`가 로컬에 있다면, SCP 과정 없이 Python script만 직접 실행할 수 있습니다.
+이미 `detections.txt`와 `bus.jpg`가 Mac 로컬에 다운로드되어 있다면, 보드와의 통신(SCP) 과정 없이 Python script만 직접 실행하여 결과를 확인할 수 있습니다.
 
     python3 auto_draw.py
 
-실행 후 Mac 로컬에 bounding box가 그려진 `result.jpg`가 생성됩니다.
+실행 후 Mac 로컬에 bounding box와 label이 렌더링된 `result.jpg`가 생성됩니다.
+
 
 ## Troubleshooting & Issues
 
@@ -300,10 +319,20 @@ nmcli를 이용해 static IP를 부여하여 해결했습니다.
 - Headless embedded board 개발을 위한 host-side debugging workflow 구성
 - 이후 RK-MPI streaming pipeline과 연결될 수 있는 host-edge workflow 설계
 
+
 ## Current Limitations
 
-현재 예제는 단일 이미지(`bus.jpg`)와 단일 결과 파일(`detections.txt`)을 기준으로 동작합니다. 여러 이미지나 영상 스트림에 대한 batch processing은 아직 포함되어 있지 않습니다. 또한, PyTorch 모델을 `.rknn`으로 변환하는 사전 양자화 과정은 본 파이프라인에서 제외되어 있습니다.
+현재 예제는 단일 이미지(`bus.jpg`)와 단일 결과 파일(`detections.txt`)을 기준으로 동작합니다. 여러 이미지나 영상 스트림에 대한 batch processing은 아직 포함되어 있지 않습니다. 
 
+또한, PyTorch 모델을 ONNX로 추출하고 `.rknn` 포맷으로 변환하는 **사전 양자화(PTQ) 과정은 본 문서의 범위를 벗어나므로 생략**되었습니다. 해당 모델 변환 파이프라인은 후속 프로젝트인 [`02_rkmpi_wireless_streaming`](../02_rkmpi_wireless_streaming)에서 상세히 다루고 있습니다.
+
+## Next Improvements
+
+- 실제 보드 실행 명령 및 파라미터 정리 (완료)
+- 여러 입력 이미지에 대한 batch visualization 지원
+- confidence threshold 조정 옵션 추가
+- 결과 파일 format을 JSON 또는 CSV로 확장 검토
+- **02 프로젝트(`02_rkmpi_wireless_streaming`)와 연계하여 정지 이미지 추론을 실시간 RTSP 스트리밍 파이프라인으로 확장**
 ## Next Improvements
 
 - PyTorch -> ONNX -> RKNN 변환 과정 문서화 (사전 양자화 파이프라인 분리)

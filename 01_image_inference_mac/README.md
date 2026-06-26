@@ -114,7 +114,7 @@ Buildroot 대비 비교적 무겁지만, `nmcli`와 같은 고수준 네트워�
 
 ### 3. Host-Side Parsing Pipeline
 
-`auto_draw.py`는 `detections.txt`를 한 줄씩 읽고, 각 줄을 공백 기준으로 분리하여 객체 class, bounding box 좌표, confidence score를 복원합니다.
+`auto_draw.py`는 `detections.txt`를 한 줄씩 읽고, 각 줄을 공백 기준으로 분리하여 객체 class, bounding box 좌표, confidence score를 복 복원합니다.
 
     label, x1, y1, x2, y2, score = data[0], int(data[1]), int(data[2]), int(data[3]), int(data[4]), float(data[5])
 
@@ -136,6 +136,40 @@ Buildroot 대비 비교적 무겁지만, `nmcli`와 같은 고수준 네트워�
 Luckfox 보드는 모니터 없이 headless 환경에서 운용되는 경우가 많습니다. 이 프로젝트는 보드에 직접 디스플레이를 연결하지 않아도, 추론 결과를 파일로 가져와 로컬 환경에서 확인할 수 있도록 구성했습니다.
 
 따라서 이 작업은 단순한 이미지 시각화가 아니라, Edge device와 host PC 사이의 debugging workflow를 만든 작업으로 볼 수 있습니다.
+
+### 6. Cross-Compilation & Docker Infrastructure
+
+본 프로젝트는 개발 호스트 PC 환경(**Apple Silicon M3 Pro, ARM64**)과 타겟 임베디드 보드(Rockchip RV1106, ARM32) 간의 아키텍처 차이를 극복하고, 개발 환경을 깔끔하게 격리하기 위해 **Docker 기반의 크로스 컴파일 파이프라인**을 구축하여 진행했습니다.
+
+#### 6.1. Development Environment
+- **Host Machine:** macOS (Apple M3 Pro, ARM64 아키텍처)
+- **Container Environment:** `luckfox-builder` (Docker `linux/amd64` 기반 Ubuntu 에뮬레이션)
+- **Target OS on Board:** Ubuntu 22.04 (Community Image)
+- **Toolchain C Library:** **glibc** (`arm-rockchip830-linux-gnueabihf-gcc`)
+
+#### 6.2. Cross-Compile Implementation Details
+
+타겟 보드의 OS가 Ubuntu 환경이므로, 임베디드 리눅스의 표준 C 라이브러리인 **`glibc` 기반의 툴체인**을 지정하여 빌드를 수행했습니다. 
+
+1. **호스트 아키텍처 우회:** M3 Mac 터미널에서는 ARM64로 인식되지만, Docker 컨테이너 내부를 `linux/amd64` 플랫폼으로 격리하여 x86_64 리눅스 환경 표준인 툴체인 및 Rockchip SDK 빌드 스크립트와의 호환성을 확보했습니다.
+
+        $ uname -m
+        x86_64
+
+2. **C++ 소스 코드 커스텀 및 영속화:** 정지 이미지 추론의 결과물(Class, Bounding Box 좌표, Confidence)이 휘발되지 않도록, `board_src/main.cc` 내부의 Post-Process 결과 루프를 수정하여 파일 시스템에 로그를 기록하는 `fprintf` 기반의 파일 출력 로직(`detections.txt`)을 커스텀 구현했습니다.
+
+3. **컴파일 및 바이너리 빌드:** CMake 및 Make 빌드 시퀀스를 통해 `/work/rknpu2/examples/RV1106_RV1103/rknn_yolov5_demo/build/build_linux_arm` 경로에서 보드 구동용 최종 실행 파일을 생성했습니다.
+<img width="2346" height="366" alt="스크린샷 2026-06-26 오후 2 43 31" src="https://github.com/user-attachments/assets/3679ba04-44c7-48b8-b15f-1ff7303406c3" />
+
+
+#### 6.3. Binary Verification (Smoking Gun)
+
+크로스 컴파일 완료 후 생성된 바이너리:
+<img width="3576" height="270" alt="스크린샷 2026-06-26 오후 2 38 23" src="https://github.com/user-attachments/assets/9014fde3-4134-44b3-8f0e-c282cf6d9de4" />
+
+- **`ARM, 32-bit`:** 호스트 PC(64비트) 환경이 아닌 RV1106 프로세서(32비트 ARM) 아키텍처용 바이너리로 정확히 크로스 컴파일됨을 증명.
+- **`interpreter /lib/ld-linux-armhf.so.3`:** 02번 스트리밍 프로젝트(Buildroot/uClibc)와 달리, 본 프로젝트는 Ubuntu OS 환경에 맞춰 **`glibc` 표준 링크 인터프리터**를 참조하도록 맞춤형 빌드가 완료되었음을 기술적으로 증명.
+
 
 ## How to Run
 
@@ -254,6 +288,4 @@ nmcli를 이용해 static IP를 부여하여 해결했습니다.
 - RKNN model file 생성 로그 및 설정 추가
 - 실제 보드 실행 명령 정리
 - 여러 입력 이미지에 대한 batch visualization 지원
-- confidence threshold 조정 옵션 추가
 - 결과 파일 format을 JSON 또는 CSV로 확장 검토
-- 02 프로젝트의 RK-MPI streaming pipeline과 연결

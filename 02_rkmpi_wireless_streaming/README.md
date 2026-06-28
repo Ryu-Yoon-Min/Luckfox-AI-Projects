@@ -82,11 +82,14 @@ Luckfox 공식 위키에 따르면, 프로젝트에 사용된 SC3336 CSI 카메�
 ### 3. Model Conversion & PTQ Quantization (rknn-toolkit2)
 C++ 소스코드 크로스 컴파일(SDK 활용)과 별개로, AI 모델을 보드의 NPU가 연산할 수 있는 언어로 변환하기 위해 Python 기반의 **`rknn-toolkit2`** 도구를 사용했습니다. 무거운 PyTorch 가중치를 직렬화 포맷(`.rknn`)으로 2단계에 걸쳐 직접 변환 및 양자화했습니다.
 
-1. **ONNX 구조 추출:** `export.py --rknpu` 명령어로 NPU 최적화용 가중치 그래프 포맷을 확보했습니다.
+1. **ONNX 구조 추출:** YOLOv5 환경에서 `export.py` 스크립트에 `--rknpu` 옵션을 주입하여 NPU 최적화용 가중치 그래프 포맷을 확보했습니다.
+
+        python export.py --weights yolov5s.pt --rknpu
+
 2. **INT8 양자화(PTQ):** `luckfox-builder` 도커 환경에서 벤더사(Rockchip)가 공식 제공하는 최적화 설정 파일(`model_config.yml`)을 주입하여 타겟 플랫폼(`rv1106`) 전용 INT8 압축을 완수했습니다.
 
-    cd /work/rknn-toolkit2/rknn-toolkit2/examples/onnx/yolov5/
-    python3 -m rknn.api.rknn_convert -t rv1106 -i ./model_config.yml -o ./
+        cd /work/rknn-toolkit2/rknn-toolkit2/examples/onnx/yolov5/
+        python3 -m rknn.api.rknn_convert -t rv1106 -i ./model_config.yml -o ./
 
 **명령어 상세 분석:**
 * `-m rknn.api.rknn_convert`: `rknn-toolkit2` 패키지에 내장된 변환 모듈을 실행합니다.

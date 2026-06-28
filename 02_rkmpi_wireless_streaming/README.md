@@ -75,12 +75,7 @@ Luckfox 공식 위키에 따르면, 프로젝트에 사용된 SC3336 CSI 카메�
 
 * 벤더사(Luckfox)에서 제공하는 공식 RKMPI 예제 저장소의 `CMakeLists.txt` 구조를 활용했습니다.
 
-    # CMakeLists.txt 내 uClibc 툴체인 타겟팅 로직 (참고)
-    if(${LIBC_TYPE} STREQUAL "uclibc")
-        set(CMAKE_C_COMPILER "${SDK_PATH}/tools/linux/toolchain/arm-rockchip830-linux-uclibcgnueabihf/bin/arm-rockchip830-linux-uclibcgnueabihf-gcc")
-    endif()
-
-생성된 바이너리는 `file` 명령어 검증 시 `/lib/ld-uClibc.so.0` 인터프리터를 정확히 지목하여 보드 커널과 충돌 없이 단독 구동됨을 확인했습니다.
+생성된 바이너리(`luckfox_pico_rtsp_yolov5`)는 `file` 명령어 검증 시 `/lib/ld-uClibc.so.0` 인터프리터를 정확히 지목하여 보드 커널과 충돌 없이 단독 구동됨을 확인했습니다.
 
 <img width="2300" height="380" alt="luckfox_pico_rtsp_yolov5" src="https://github.com/user-attachments/assets/861ea765-3d01-4030-95af-0ba116af4310" />
 

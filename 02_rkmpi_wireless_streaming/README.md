@@ -150,6 +150,9 @@ https://github.com/user-attachments/assets/c397766c-768e-4e58-b90c-1e39d002bc95
 ### Screenshot
 <img width="3514" height="1958" alt="vlc_addr" src="https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d" />
 
+<img width="5712" height="4284" alt="IMG_4203" src="https://github.com/user-attachments/assets/a5524483-d227-46de-8997-97e12a743239" />
+
+
 ## Troubleshooting & Issues
 
 ### Problem: Network Connecting Problem(WLAN) - uDHCPc Problem

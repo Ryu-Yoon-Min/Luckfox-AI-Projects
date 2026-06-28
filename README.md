@@ -37,8 +37,8 @@
 ### 2. OS 및 하드웨어 제약에 따른 유연한 인프라 대응 (Headless Network)
 보드에 모니터를 연결하지 않는 Headless 환경에서 무선 통신을 유지하기 위해서는 **'재부팅 후에도 변하지 않는 고정 IP(Static IP)'** 확보가 필수적입니다. 프로젝트 요구사항에 따라 달라진 OS 환경에 맞춰 각각 최적의 네트워크 인프라를 구축했습니다.
 
-* **Ubuntu 22.04 (`01`):** `nmcli`와 같은 고수준 네트워크 관리 도구를 적극 활용하여 안정적인 Static IP 및 자동 연결 환경을 구성했습니다.
-* **Buildroot (`02`):** CSI 카메라 구동을 위해 Buildroot로 OS를 전환함에 따라 `nmcli` 부재 및 백그라운드 데몬(`udhcpc`)에 의한 IP 덮어쓰기(**Race Condition**)가 발생했습니다. 이를 해결하기 위해 `wpa_supplicant`의 Wi-Fi L2 인증 완료(`RUNNING`) 플래그를 감지한 즉시 비동기로 Static IP를 주입하는 커스텀 스크립트를 작성하여 시스템 충돌을 완벽히 우회했습니다.
+* **Ubuntu 22.04 (`01_image_inference_mac`):** `nmcli`와 같은 고수준 네트워크 관리 도구를 적극 활용하여 안정적인 Static IP 및 자동 연결 환경을 구성했습니다.
+* **Buildroot (`02_rkmpi_wireless_streaming`):** CSI 카메라 구동을 위해 Buildroot로 OS를 전환함에 따라 `nmcli` 부재 및 백그라운드 데몬(`udhcpc`)에 의한 IP 덮어쓰기(**Race Condition**)가 발생했습니다. 이를 해결하기 위해 `wpa_supplicant`의 Wi-Fi L2 인증 완료(`RUNNING`) 플래그를 감지한 즉시 비동기로 Static IP를 주입하는 커스텀 스크립트를 작성하여 시스템 충돌을 완벽히 우회했습니다.
 
 ### 3. Cross-Compilation & Hardware-Specific Optimization
 호스트 PC와 엣지 디바이스 간의 아키텍처 차이를 극복하고 NPU 자원을 100% 활용하기 위한 빌드 및 최적화 파이프라인을 구축했습니다.

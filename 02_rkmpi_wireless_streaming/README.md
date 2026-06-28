@@ -193,11 +193,13 @@ IP 주소 할당 여부가 아니라, `wlan0`의 `RUNNING` flag를 기준으로 
 **[Phase 3] Root Cause Discovery**
 * **분석:** `grep -rn "udhcpc" /etc/init.d/`를 통해 부팅시 `udhcpc`를 소환하는 근본 스크립트 추적.
 * **발견:** `/etc/init.d/S99hciinit` 스크립트가 인터페이스 활성화와 동시에 DHCP 요청을 강제하고 있음을 식별. 커스텀 스크립트와 동일한 우선순위(`S99`)에서 발생하는 시스템 레이어의 충돌임을 확신.
+<img width="1764" height="830" alt="스크린샷 2026-06-29 오전 2 43 44" src="https://github.com/user-attachments/assets/91ccbd53-25e6-414b-a704-0ec054db95cf" />
 
 **[Phase 4] Execution Priority Adjustment (Init.d Sequence)**
 * **시도:** 기본 스크립트를 S90hciinit으로 앞당기고, 커스텀 스크립트는 S99staticip로 유지함. 시스템이 먼저 Wi-Fi를 초기화, 마지막에 고정 IP 스크립트가 실행되어 주도권을 뺏어오는 전략 시도.
 * **한계:** 여전히 공유기 할당 주소로 IP가 덮어씌워지거나 설정 자체가 실패함.
 * **분석:** init.d의 실행 순서를 조작하더라도, **Rockchip 전용 네트워크 데몬**이 부팅 이후에도 L2 이벤트를 실시간 감시하며 udhcpc를 강제 호출한다는 것을 알게됨. 텍스트 스크립트 수정만으로는 하드코딩된 '상시 감시 및 자동 복구 메커니즘'을 막을 수 없음을 깨달음.
+
 
 **[Phase 5] Strategy Shift: L2 vs L3**
 * **문제점:** DHCP 기능을 원천 차단하기 위해 바이너리를 `udhcpc_backup`으로 Renaming하자, 기존 커스텀 스크립트(`S99staticip`) 내의 "IP 주소가 할당되기를 기다리는 로직"이 조건을 충족하지 못해 무한 대기에 빠지는 논리적 모순 발생.

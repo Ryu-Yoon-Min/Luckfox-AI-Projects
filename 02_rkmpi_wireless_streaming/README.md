@@ -19,7 +19,6 @@ Luckfox Pico Ultra BW(Rockchip RV1106 NPU) 보드에서 카메라 입력을 받�
 
     02_rkmpi_wireless_streaming/
     ├── README.md
-    ├── troubleshooting.md
     ├── bin/
     │   └── luckfox_pico_rtsp_yolov5    # uClibc 크로스 컴파일 완료된 실행 바이너리
     ├── model/
@@ -147,12 +146,12 @@ Docker 컨테이너(Luckfox SDK 환경)에서 크로스 컴파일을 수행합�
 ### RTSP Streaming Demo
 https://github.com/user-attachments/assets/c397766c-768e-4e58-b90c-1e39d002bc95
 
-- RTSP 해상도: 
-- FPS: 
-- latency 대략값: 
-- 테스트 시간: 5분 이상
+- RTSP 해상도: 측정 후 기입
+- FPS: 측정 후 기입
+- latency 대략값: 측정 후 기입 
+- 테스트 시간: 30분 이상
 - 재부팅 테스트 횟수: 10회
-- 사용한 공유기/네트워크 환경: 
+- 사용한 공유기/네트워크 환경: 측정 후 기입
 
 ### Screenshot
 <img width="3514" height="1958" alt="vlc_addr" src="https://github.com/user-attachments/assets/8081be58-0b81-4d69-b6c5-7dce07f6e99d" />

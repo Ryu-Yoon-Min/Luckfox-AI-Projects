@@ -38,11 +38,11 @@
 보드에 모니터를 연결하지 않는 Headless 환경에서 무선 통신을 유지하기 위해서는 **'재부팅 후에도 변하지 않는 고정 IP(Static IP)'** 확보가 필수적입니다. 프로젝트 요구사항에 따라 달라진 OS 환경에 맞춰 각각 최적의 네트워크 인프라를 구축했습니다.
 
 * **Ubuntu 22.04 (`01_image_inference_mac`):** `nmcli`와 같은 고수준 네트워크 관리 도구를 적극 활용하여 안정적인 Static IP 및 자동 연결 환경을 구성했습니다.
-* **Buildroot (`02_rkmpi_wireless_streaming`):** CSI 카메라 구동을 위해 Buildroot로 OS를 전환함에 따라 `nmcli` 부재 및 백그라운드 데몬(`udhcpc`)에 의한 IP 덮어쓰기(**Race Condition**)가 발생했습니다. 이를 해결하기 위해 `wpa_supplicant`의 Wi-Fi L2 인증 완료(`RUNNING`) 플래그를 감지한 즉시 비동기로 Static IP를 주입하는 커스텀 스크립트를 작성하여 시스템 충돌을 완벽히 우회했습니다.
+* **Buildroot (`02_rkmpi_wireless_streaming`):** CSI 카메라 구동을 위해 Buildroot로 OS를 전환함에 따라 `nmcli` 부재 및 백그라운드 데몬(`udhcpc`)에 의한 IP 덮어쓰기(**Race Condition**)가 발생했습니다. 이를 해결하기 위해 `wpa_supplicant`의 Wi-Fi L2 인증 완료(`RUNNING`) 플래그를 감지한 즉시 비동기로 Static IP를 주입하는 커스텀 스크립트를 작성하여 시스템 충돌을 static IP 기반 접근이 유지되도록 우회
 
 ### 3. Cross-Compilation & Hardware-Specific Optimization
-호스트 PC와 엣지 디바이스 간의 아키텍처 차이를 극복하고 NPU 자원을 100% 활용하기 위한 빌드 및 최적화 파이프라인을 구축했습니다.
+호스트 PC와 엣지 디바이스 간의 아키텍처 차이를 극복하고 NPU 자원을 target에 맞춘 변환/배포 파이프라인 구축하기 위한 빌드 및 최적화 파이프라인을 구축했습니다.
 
 * **타겟 맞춤형 크로스 컴파일 분리 적용:** OS 종속성을 고려하여 01 프로젝트는 `arm-rockchip830-linux-gnueabihf-gcc` (glibc 기반)로, 02 프로젝트는 카메라 제어에 필요한 초경량 환경을 위해 `arm-rockchip830-linux-uclibcgnueabihf-gcc` (uClibc 기반) 툴체인으로 분리하여 빌드를 완료했습니다.
 * **NPU 추론을 위한 모델 양자화 (PTQ):**
-  FP32 기반의 무거운 PyTorch 가중치(`.pt`)를 그대로 사용하지 않고, 벤더사(Rockchip) SDK가 제공하는 YOLOv5 최적화 설정 파일(`model_config.yml`)을 활용했습니다. 이를 통해 NPU 하드웨어 가속에 최적화된 INT8 기반의 직렬화 포맷(`.rknn`)으로 모델을 완벽하게 양자화 변환하여 보드에 통합했습니다.
+  FP32 기반의 무거운 PyTorch 가중치(`.pt`)를 그대로 사용하지 않고, 벤더사(Rockchip) SDK가 제공하는 YOLOv5 최적화 설정 파일(`model_config.yml`)을 활용했습니다. 이를 통해 NPU 하드웨어 가속에 최적화된 INT8 기반의 직렬화 포맷(`.rknn`)으로 모델을 INT8 RKNN 포맷으로 변환하여 보드에 통합했습니다.

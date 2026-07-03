@@ -200,15 +200,15 @@ Docker 환경 내부에서 수정한 `main.cc`를 빌드하여 보드용 실행 
 
 크로스 컴파일을 마친 바이너리(`rknn_yolov5_demo`)와 사전에 준비된 NPU 모델(`.rknn`), 그리고 테스트할 이미지(`bus.jpg`)를 보드(RV1106)로 전송
 
-- SDK 내부에서 직접 빌드한 바이너리를 사용할 경우, SDK 빌드 산출물 경로에서 실행 파일을 전송
+SDK 내부에서 직접 빌드한 바이너리를 사용할 경우, SDK 빌드 산출물 경로에서 실행 파일을 전송
 
     scp /work/rknpu2/examples/RV1106_RV1103/rknn_yolov5_demo/build/build_linux_arm/rknn_yolov5_demo pico@<BOARD_IP>:/home/pico/yolo_test/
 
-- 본 저장소에 포함된 prebuilt 바이너리를 사용할 경우, `bin/` 디렉토리의 실행 파일을 전송
+본 저장소에 포함된 prebuilt 바이너리를 사용할 경우, `bin/` 디렉토리의 실행 파일을 전송
 
     scp ./bin/rknn_yolov5_demo pico@<BOARD_IP>:/home/pico/yolo_test/
 
-- 테스트 이미지와 모델 파일은 보드의 예제 실행 디렉토리 구조에 맞춰 전송
+테스트 이미지와 모델 파일은 보드의 예제 실행 디렉토리 구조에 맞춰 전송
 
     scp ./bus.jpg pico@<BOARD_IP>:/home/pico/yolo_test/model/
     scp <LOCAL_RKNN_MODEL_PATH>/yolov5s-640-640.rknn pico@<BOARD_IP>:/home/pico/yolo_test/model/RV1106/

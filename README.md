@@ -8,7 +8,7 @@
 
 | Project | Target OS | Status | Evidence & Artifacts |
 | :--- | :--- | :--- | :--- |
-| `01_image_inference_mac` | Ubuntu 22.04 (Community) | Completed | `src/main.cc`, `detections.txt`, `auto_draw.py`, `run.sh` |
+| `01_image_inference_mac` | Ubuntu 22.04 (Community) | Completed | `board_src/main.cc`, `detections.txt`, `auto_draw.py`, `run.sh` |
 | `02_rkmpi_wireless_streaming` | Buildroot (Official) | Completed | RK-MPI VI/VENC pipeline, `S99staticip.sh`, PTQ Models |
 
 ## 📂 Repository Structure
@@ -32,7 +32,7 @@
 ### 1. Data Pipeline Evolution: From Ephemeral Logs to Real-time Stream
 단순히 예제 코드를 실행하는 것을 넘어, 데이터의 활용성을 극대화하는 방향으로 아키텍처를 개선
 * **Step 1 (01 Project):** 터미널에 출력되고 사라지는 로그(`stdout`)를 C++ 파일 입출력(`fprintf`)을 통해 구조화된 텍스트(`detections.txt`)로 저장하여 IPC(프로세스 간 통신) 기반을 마련
-* **Step 2 (02 Project):** 텍스트 기반 메타데이터 전송을 넘어, 렌더링까지 보드 내부에서 완료한 H.264/H.265 비디오 스트림을 실시간 무선 전송(RTSP)하는 수준으로 고도화
+* **Step 2 (02 Project):** 텍스트 기반 메타데이터 전송을 넘어, 렌더링까지 보드 내부에서 완료한 H.264 비디오 스트림을 실시간 무선 전송(RTSP)하는 수준으로 고도화
 
 ### 2. OS 및 하드웨어 제약에 따른 유연한 인프라 대응 (Headless Network)
 보드에 모니터를 연결하지 않는 Headless 환경에서 무선 통신을 유지하기 위해서는 **'재부팅 후에도 변하지 않는 고정 IP(Static IP)'** 확보가 필수적

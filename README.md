@@ -46,5 +46,4 @@
 
 * **타겟 맞춤형 크로스 컴파일 분리 적용:** OS 종속성을 고려하여 01 프로젝트는 `arm-rockchip830-linux-gnueabihf-gcc` (glibc 기반)로, 02 프로젝트는 카메라 제어에 필요한 초경량 환경을 위해 `arm-rockchip830-linux-uclibcgnueabihf-gcc` (uClibc 기반) 툴체인으로 분리하여 빌드를 완료
 * **NPU 추론을 위한 모델 양자화 (PTQ):**
-  FP32 기반의 무거운 PyTorch 가중치(`.pt`)를 그대로 사용하지 않고, 벤더사(Rockchip) SDK가 제공하는 YOLOv5 최적화 설정 파일(`model_config.yml`)을 활용
-  이를 통해 NPU 하드웨어 가속에 최적화된 INT8 기반의 직렬화 포맷(`.rknn`)으로 모델을 INT8 RKNN 포맷으로 변환하여 보드에 통합
+FP32 PyTorch 가중치(.pt)를 RV1106 NPU에서 실행 가능한 INT8 RKNN 포맷으로 변환하고, Rockchip SDK의 YOLOv5 최적화 설정(model_config.yml)을 적용해 보드 배포 파이프라인에 통합

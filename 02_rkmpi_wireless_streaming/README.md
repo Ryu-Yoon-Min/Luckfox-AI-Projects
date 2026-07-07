@@ -132,8 +132,8 @@ Luckfox 공식 RK-MPI example SDK의 `build.sh`를 사용해 크로스 컴파일
     cd /rkmpi_work/luckfox_pico_rkmpi_example
     ./build.sh
 
-    # 1) libc 선택: uclibc
-    # 2) example 선택: luckfox_pico_rtsp_yolov5
+    1) libc 선택: uclibc
+    2) example 선택: luckfox_pico_rtsp_yolov5
 
 본 저장소는 SDK 전체를 포함하지 않고, RK-MPI example 기반으로 수정한 소스와 배포 스크립트, 모델 구성 파일을 정리
 
